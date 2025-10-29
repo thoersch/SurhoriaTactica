@@ -1,0 +1,44 @@
+{
+  "tile_types": {
+	"floor": {
+	  "traversable": true,
+	  "cover": 0,
+	  "description": "Open floor"
+	},
+	"wall": {
+	  "traversable": false,
+	  "cover": 0,
+	  "description": "Solid wall"
+	},
+	"door": {
+	  "traversable": true,
+	  "cover": 0,
+	  "description": "Doorway"
+	},
+	"crate": {
+	  "traversable": false,
+	  "cover": 2,
+	  "description": "Wooden crate - provides cover"
+	},
+	"sandbag": {
+	  "traversable": false,
+	  "cover": 3,
+	  "description": "Sandbag barricade - heavy cover"
+	},
+	"rubble": {
+	  "traversable": true,
+	  "cover": 1,
+	  "description": "Difficult terrain - light cover"
+	},
+	"water": {
+	  "traversable": false,
+	  "cover": 0,
+	  "description": "Deep water"
+	},
+	"window": {
+	  "traversable": true,
+	  "cover": 1,
+	  "description": "Window - provides light cover"
+	}
+  }
+}

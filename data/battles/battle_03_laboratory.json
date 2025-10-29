@@ -1,0 +1,65 @@
+{
+  "id": "battle_03_laboratory",
+  "name": "Overrun Laboratory",
+  "description": "Clear the research facility of all infected",
+  "terrain_id": "laboratory_01",
+  "grid_width": 16,
+  "grid_height": 12,
+  "player_positions": [
+	{"x": 2, "y": 5},
+	{"x": 2, "y": 6},
+	{"x": 3, "y": 5}
+  ],
+  "enemies": [
+	{
+	  "name": "Mutant Zombie",
+	  "position": {"x": 13, "y": 5},
+	  "move_range": 4,
+	  "attack_range": 1,
+	  "health": 120,
+	  "max_health": 120,
+	  "attack": 18,
+	  "defense": 8
+	},
+	{
+	  "name": "Infected Soldier",
+	  "position": {"x": 12, "y": 4},
+	  "move_range": 5,
+	  "attack_range": 2,
+	  "health": 90,
+	  "max_health": 90,
+	  "attack": 14,
+	  "defense": 7
+	},
+	{
+	  "name": "Infected Soldier",
+	  "position": {"x": 12, "y": 6},
+	  "move_range": 5,
+	  "attack_range": 2,
+	  "health": 90,
+	  "max_health": 90,
+	  "attack": 14,
+	  "defense": 7
+	},
+	{
+	  "name": "Spitter Spider",
+	  "position": {"x": 14, "y": 3},
+	  "move_range": 3,
+	  "attack_range": 3,
+	  "health": 50,
+	  "max_health": 50,
+	  "attack": 12,
+	  "defense": 3
+	},
+	{
+	  "name": "Spitter Spider",
+	  "position": {"x": 14, "y": 8},
+	  "move_range": 3,
+	  "attack_range": 3,
+	  "health": 50,
+	  "max_health": 50,
+	  "attack": 12,
+	  "defense": 3
+	}
+  ]
+}

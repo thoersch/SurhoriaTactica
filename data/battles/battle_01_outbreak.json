@@ -1,0 +1,35 @@
+{
+  "id": "battle_01_outbreak",
+  "name": "Outbreak Zone Alpha",
+  "description": "First contact with the infected",
+  "terrain_id": "outbreak_01",
+  "grid_width": 12,
+  "grid_height": 8,
+  "player_positions": [
+	{"x": 2, "y": 3},
+	{"x": 3, "y": 4},
+	{"x": 2, "y": 5}
+  ],
+  "enemies": [
+	{
+	  "name": "Zombie",
+	  "position": {"x": 9, "y": 3},
+	  "move_range": 3,
+	  "attack_range": 1,
+	  "health": 60,
+	  "max_health": 60,
+	  "attack": 8,
+	  "defense": 2
+	},
+	{
+	  "name": "Zombie Dog",
+	  "position": {"x": 10, "y": 5},
+	  "move_range": 6,
+	  "attack_range": 1,
+	  "health": 40,
+	  "max_health": 40,
+	  "attack": 10,
+	  "defense": 3
+	}
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "battle_02_campsite",
+  "name": "Abandoned Campsite",
+  "description": "Multiple hostiles detected in the old military camp",
+  "terrain_id": "campsite_01",
+  "grid_width": 14,
+  "grid_height": 10,
+  "player_positions": [
+	{"x": 1, "y": 4},
+	{"x": 1, "y": 5},
+	{"x": 2, "y": 4}
+  ],
+  "enemies": [
+	{
+	  "name": "Crawler Zombie",
+	  "position": {"x": 11, "y": 4},
+	  "move_range": 5,
+	  "attack_range": 1,
+	  "health": 50,
+	  "max_health": 50,
+	  "attack": 12,
+	  "defense": 4
+	},
+	{
+	  "name": "Crawler Zombie",
+	  "position": {"x": 11, "y": 6},
+	  "move_range": 5,
+	  "attack_range": 1,
+	  "health": 50,
+	  "max_health": 50,
+	  "attack": 12,
+	  "defense": 4
+	},
+	{
+	  "name": "Giant Spider",
+	  "position": {"x": 12, "y": 5},
+	  "move_range": 4,
+	  "attack_range": 2,
+	  "health": 80,
+	  "max_health": 80,
+	  "attack": 15,
+	  "defense": 6
+	}
+  ]
+}

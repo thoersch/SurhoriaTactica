@@ -1,0 +1,17 @@
+{
+  "id": "outbreak_01",
+  "name": "Outbreak Zone",
+  "width": 12,
+  "height": 8,
+  "tilesheet": "military_tiles",
+  "tiles": [
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "floor", "floor", "crate", "crate", "wall", "wall", "crate", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "crate", "crate", "door", "door", "crate", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "sandbag", "sandbag", "door", "door", "sandbag", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "sandbag", "sandbag", "wall", "wall", "sandbag", "floor", "floor", "floor", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+  ]
+}

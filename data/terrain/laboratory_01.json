@@ -1,0 +1,21 @@
+{
+  "id": "laboratory_01",
+  "name": "Research Laboratory",
+  "width": 16,
+  "height": 12,
+  "tilesheet": "military_tiles",
+  "tiles": [
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "floor", "floor", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "floor", "floor", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "floor", "floor", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "floor", "floor", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+  ]
+}
