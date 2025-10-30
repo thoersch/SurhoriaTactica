@@ -2,9 +2,22 @@
   "id": "battle_03_laboratory",
   "name": "Overrun Laboratory",
   "description": "Clear the research facility of all infected",
-  "terrain_id": "laboratory_01",
   "grid_width": 16,
   "grid_height": 12,
+  "tiles": [
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "floor", "floor", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "floor", "floor", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "floor", "floor", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "floor", "floor", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+  ],
   "player_positions": [
 	{"x": 2, "y": 5},
 	{"x": 2, "y": 6},

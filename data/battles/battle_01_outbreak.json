@@ -2,9 +2,18 @@
   "id": "battle_01_outbreak",
   "name": "Outbreak Zone Alpha",
   "description": "First contact with the infected",
-  "terrain_id": "outbreak_01",
   "grid_width": 12,
   "grid_height": 8,
+  "tiles": [
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "floor", "floor", "crate", "crate", "wall", "wall", "crate", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "crate", "crate", "door", "door", "crate", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "sandbag", "sandbag", "door", "door", "sandbag", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "sandbag", "sandbag", "wall", "wall", "sandbag", "floor", "floor", "floor", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+  ],
   "player_positions": [
 	{"x": 2, "y": 3},
 	{"x": 3, "y": 4},

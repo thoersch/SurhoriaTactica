@@ -2,9 +2,20 @@
   "id": "battle_02_campsite",
   "name": "Abandoned Campsite",
   "description": "Multiple hostiles detected in the old military camp",
-  "terrain_id": "campsite_01",
   "grid_width": 14,
   "grid_height": 10,
+  "tiles": [
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "floor", "floor", "crate", "crate", "floor", "floor", "floor", "floor", "sandbag", "sandbag", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "crate", "crate", "floor", "floor", "floor", "floor", "sandbag", "sandbag", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "crate", "crate", "floor", "floor", "floor", "floor", "sandbag", "sandbag", "floor", "floor", "wall"],
+	["wall", "floor", "floor", "crate", "crate", "floor", "floor", "floor", "floor", "sandbag", "sandbag", "floor", "floor", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+  ],
   "player_positions": [
 	{"x": 1, "y": 4},
 	{"x": 1, "y": 5},

@@ -64,11 +64,7 @@ func load_battle(battle_id: String, game_root: Node):
 	grid_width = current_battle_data.get("grid_width", 12)
 	grid_height = current_battle_data.get("grid_height", 8)
 	
-	var terrain_id = current_battle_data.get("terrain_id", "")
-	if terrain_id != "":
-		terrain_data = BattleLoader.load_terrain_data(terrain_id)
-	else:
-		terrain_data = []
+	terrain_data = BattleLoader.load_terrain_data(current_battle_data)
 	
 	setup_grid(game_root)
 	setup_astar()

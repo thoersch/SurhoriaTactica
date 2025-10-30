@@ -3,18 +3,19 @@ class_name BattleLoader
 
 static func load_battle_data(battle_id: String) -> Dictionary:
 	var path = "res://data/battles/" + battle_id + ".json"
-	return load_json_file(path)
-
-static func load_terrain_data(terrain_id: String) -> Array:
-	var path = "res://data/terrain/" + terrain_id + ".json"
 	var data = load_json_file(path)
 	
 	if data.is_empty():
-		print("No terrain found for: " + terrain_id)
-		return []
+		return {}
 	
-	# Convert string tile types to tile data objects
-	var tiles_raw = data.get("tiles", [])
+	# Process terrain data if present
+	if data.has("tiles"):
+		data["terrain"] = process_terrain_tiles(data["tiles"])
+	
+	return data
+
+static func process_terrain_tiles(tiles_raw: Array) -> Array:
+	"""Convert tile type strings to tile data objects with properties"""
 	var tiles_processed = []
 	
 	for row in tiles_raw:
@@ -28,6 +29,19 @@ static func load_terrain_data(terrain_id: String) -> Array:
 		tiles_processed.append(processed_row)
 	
 	return tiles_processed
+
+static func load_terrain_data(battle_data: Dictionary) -> Array:
+	"""
+	Extract terrain data from battle data.
+	This replaces the old separate terrain loading system.
+	"""
+	if battle_data.has("terrain"):
+		return battle_data["terrain"]
+	
+	if battle_data.has("tiles"):
+		return process_terrain_tiles(battle_data["tiles"])
+	
+	return []
 
 static func load_json_file(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
