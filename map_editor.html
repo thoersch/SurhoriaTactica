@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surhoria Tactica - Map Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 300px;
+            background: #252525;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid #333;
+        }
+
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #toolbar {
+            background: #252525;
+            padding: 15px 20px;
+            border-bottom: 2px solid #333;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        #canvas-container {
+            flex: 1;
+            overflow: auto;
+            background: #1a1a1a;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+            image-rendering: pixelated;
+        }
+
+        h2 {
+            color: #4a9eff;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        h3 {
+            color: #6ab0ff;
+            margin: 20px 0 10px 0;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: #b0b0b0;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 8px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #4a9eff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #3a8eef;
+        }
+
+        button:active {
+            background: #2a7edf;
+        }
+
+        .tile-palette {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .tile-button {
+            padding: 12px 8px;
+            background: #1a1a1a;
+            border: 2px solid #444;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .tile-button:hover {
+            border-color: #6ab0ff;
+        }
+
+        .tile-button.selected {
+            border-color: #4a9eff;
+            background: #2a4a6a;
+        }
+
+        .color-preview {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            border: 1px solid #666;
+            vertical-align: middle;
+            margin-left: 8px;
+            border-radius: 2px;
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        #coordinates {
+            background: #1a1a1a;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #6ab0ff;
+            font-family: monospace;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #export-area {
+            display: none;
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        .error {
+            color: #ff6b6b;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .success {
+            color: #51cf66;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #252525;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 2px solid #444;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .list-item {
+            background: #1a1a1a;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .list-item button {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        .mini-input {
+            width: 60px;
+            display: inline-block;
+            padding: 4px;
+            margin: 0 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h2>Map Properties</h2>
+        
+        <div class="section">
+            <label>Map ID:</label>
+            <input type="text" id="map-id" value="new_map">
+            
+            <label>Map Name:</label>
+            <input type="text" id="map-name" value="New Map">
+            
+            <label>Width (tiles):</label>
+            <input type="number" id="map-width" value="30" min="5" max="100">
+            
+            <label>Height (tiles):</label>
+            <input type="number" id="map-height" value="20" min="5" max="100">
+            
+            <label>Tile Size (pixels):</label>
+            <input type="number" id="tile-size" value="32" min="16" max="64">
+            
+            <button onclick="resizeMap()">Apply Size</button>
+        </div>
+
+        <h3>Tile Palette</h3>
+        <div class="tile-palette" id="tile-palette"></div>
+
+        <h3>Tools</h3>
+        <div class="button-group">
+            <button onclick="setTool('paint')">Paint</button>
+            <button onclick="setTool('fill')">Fill</button>
+            <button onclick="setTool('spawn')">Set Spawn</button>
+            <button onclick="setTool('stairs')">Add Stairs</button>
+            <button onclick="setTool('door')">Add Door</button>
+            <button onclick="setTool('zone')">Add Zone</button>
+        </div>
+
+        <h3>Special Elements</h3>
+        <div class="section">
+            <button onclick="showTransitionsModal()">Manage Transitions</button>
+            <button onclick="showDoorsModal()">Manage Doors</button>
+            <button onclick="showZonesModal()">Manage Zones</button>
+        </div>
+
+        <h3>File Operations</h3>
+        <div class="button-group">
+            <button onclick="showImportModal()">Import JSON</button>
+            <button onclick="exportMap()">Export JSON</button>
+            <button onclick="downloadMap()">Download JSON</button>
+            <button onclick="clearMap()">Clear Map</button>
+        </div>
+    </div>
+
+    <div id="main">
+        <div id="toolbar">
+            <span>Current Tool: <strong id="current-tool">Paint</strong></span>
+            <span>|</span>
+            <span>Selected Tile: <strong id="current-tile">floor</strong></span>
+            <span>|</span>
+            <span id="coordinates">x: 0, y: 0</span>
+        </div>
+        
+        <div id="canvas-container">
+            <canvas id="map-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="import-modal" class="modal">
+        <div class="modal-content">
+            <h2>Import Map JSON</h2>
+            <textarea id="import-json" placeholder="Paste your map JSON here..."></textarea>
+            <div id="import-message"></div>
+            <div class="modal-buttons">
+                <button onclick="closeImportModal()">Cancel</button>
+                <button onclick="importMap()">Import</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="export-modal" class="modal">
+        <div class="modal-content">
+            <h2>Export Map JSON</h2>
+            <textarea id="export-json" readonly></textarea>
+            <div class="modal-buttons">
+                <button onclick="copyToClipboard()">Copy to Clipboard</button>
+                <button onclick="closeExportModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="transitions-modal" class="modal">
+        <div class="modal-content">
+            <h2>Manage Transitions</h2>
+            <div id="transitions-list"></div>
+            <h3>Add New Transition</h3>
+            <label>Position X:</label>
+            <input type="number" id="trans-x" value="0" min="0">
+            <label>Position Y:</label>
+            <input type="number" id="trans-y" value="0" min="0">
+            <label>Type:</label>
+            <select id="trans-type">
+                <option value="stairs_up">Stairs Up</option>
+                <option value="stairs_down">Stairs Down</option>
+            </select>
+            <label>Target Map:</label>
+            <input type="text" id="trans-target-map" placeholder="facility_floor2">
+            <label>Target Position X:</label>
+            <input type="number" id="trans-target-x" value="0" min="0">
+            <label>Target Position Y:</label>
+            <input type="number" id="trans-target-y" value="0" min="0">
+            <div class="modal-buttons">
+                <button onclick="addTransition()">Add</button>
+                <button onclick="closeTransitionsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="doors-modal" class="modal">
+        <div class="modal-content">
+            <h2>Manage Doors</h2>
+            <div id="doors-list"></div>
+            <h3>Add New Door</h3>
+            <label>Position X:</label>
+            <input type="number" id="door-x" value="0" min="0">
+            <label>Position Y:</label>
+            <input type="number" id="door-y" value="0" min="0">
+            <label>Initially Open:</label>
+            <select id="door-open">
+                <option value="false">Closed</option>
+                <option value="true">Open</option>
+            </select>
+            <div class="modal-buttons">
+                <button onclick="addDoor()">Add</button>
+                <button onclick="closeDoorsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="zones-modal" class="modal">
+        <div class="modal-content">
+            <h2>Manage Encounter Zones</h2>
+            <div id="zones-list"></div>
+            <h3>Add New Zone</h3>
+            <label>Zone Name:</label>
+            <input type="text" id="zone-name" placeholder="main_corridor">
+            <label>X:</label>
+            <input type="number" id="zone-x" value="0" min="0">
+            <label>Y:</label>
+            <input type="number" id="zone-y" value="0" min="0">
+            <label>Width:</label>
+            <input type="number" id="zone-width" value="5" min="1">
+            <label>Height:</label>
+            <input type="number" id="zone-height" value="5" min="1">
+            <label>Encounter Rate (0.0-1.0):</label>
+            <input type="number" id="zone-rate" value="0.05" min="0" max="1" step="0.01">
+            <label>Possible Battles (comma-separated):</label>
+            <input type="text" id="zone-battles" placeholder="battle_01_outbreak, battle_02_campsite">
+            <div class="modal-buttons">
+                <button onclick="addZone()">Add</button>
+                <button onclick="closeZonesModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tile types with their colors
+        const TILE_TYPES = {
+            'wall': { color: '#333333', name: 'Wall' },
+            'floor': { color: '#999999', name: 'Floor' },
+            'door': { color: '#8B4513', name: 'Door' },
+            'stairs_up': { color: '#6666CC', name: 'Stairs Up' },
+            'stairs_down': { color: '#4444AA', name: 'Stairs Down' },
+            'crate': { color: '#A0806A', name: 'Crate' },
+            'sandbag': { color: '#8A8A6A', name: 'Sandbag' },
+            'rubble': { color: '#666666', name: 'Rubble' },
+            'water': { color: '#2244AA', name: 'Water' },
+            'window': { color: '#6AB0FF', name: 'Window' }
+        };
+
+        // Editor state
+        let mapData = {
+            id: 'new_map',
+            name: 'New Map',
+            width: 30,
+            height: 20,
+            tile_size: 32,
+            spawn_point: { x: 2, y: 10 },
+            tiles: [],
+            transitions: [],
+            doors: [],
+            encounter_zones: []
+        };
+
+        let canvas, ctx;
+        let currentTool = 'paint';
+        let selectedTile = 'floor';
+        let isDragging = false;
+        let zoneStart = null;
+
+        // Initialize
+        window.onload = function() {
+            canvas = document.getElementById('map-canvas');
+            ctx = canvas.getContext('2d');
+            
+            initializeTilePalette();
+            initializeMap();
+            setupEventListeners();
+            render();
+        };
+
+        function initializeTilePalette() {
+            const palette = document.getElementById('tile-palette');
+            palette.innerHTML = '';
+            
+            for (const [type, data] of Object.entries(TILE_TYPES)) {
+                const button = document.createElement('div');
+                button.className = 'tile-button';
+                if (type === selectedTile) button.classList.add('selected');
+                button.innerHTML = `${data.name}<span class="color-preview" style="background: ${data.color}"></span>`;
+                button.onclick = () => selectTile(type);
+                palette.appendChild(button);
+            }
+        }
+
+        function selectTile(type) {
+            selectedTile = type;
+            document.getElementById('current-tile').textContent = TILE_TYPES[type].name;
+            
+            // Update palette selection
+            document.querySelectorAll('.tile-button').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.closest('.tile-button').classList.add('selected');
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.getElementById('current-tool').textContent = tool.charAt(0).toUpperCase() + tool.slice(1);
+            
+            if (tool === 'zone') {
+                zoneStart = null;
+            }
+        }
+
+        function initializeMap() {
+            mapData.tiles = [];
+            for (let y = 0; y < mapData.height; y++) {
+                const row = [];
+                for (let x = 0; x < mapData.width; x++) {
+                    row.push('wall');
+                }
+                mapData.tiles.push(row);
+            }
+            
+            canvas.width = mapData.width * mapData.tile_size;
+            canvas.height = mapData.height * mapData.tile_size;
+        }
+
+        function resizeMap() {
+            const newWidth = parseInt(document.getElementById('map-width').value);
+            const newHeight = parseInt(document.getElementById('map-height').value);
+            const newTileSize = parseInt(document.getElementById('tile-size').value);
+            
+            mapData.id = document.getElementById('map-id').value;
+            mapData.name = document.getElementById('map-name').value;
+            mapData.tile_size = newTileSize;
+            
+            // Resize tiles array
+            const oldTiles = mapData.tiles;
+            mapData.tiles = [];
+            
+            for (let y = 0; y < newHeight; y++) {
+                const row = [];
+                for (let x = 0; x < newWidth; x++) {
+                    // Copy old tile if it exists, otherwise use wall
+                    if (y < oldTiles.length && x < oldTiles[y].length) {
+                        row.push(oldTiles[y][x]);
+                    } else {
+                        row.push('wall');
+                    }
+                }
+                mapData.tiles.push(row);
+            }
+            
+            mapData.width = newWidth;
+            mapData.height = newHeight;
+            
+            canvas.width = newWidth * newTileSize;
+            canvas.height = newHeight * newTileSize;
+            
+            render();
+        }
+
+        function setupEventListeners() {
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp);
+            
+            // Update map properties on input
+            document.getElementById('map-id').addEventListener('input', (e) => mapData.id = e.target.value);
+            document.getElementById('map-name').addEventListener('input', (e) => mapData.name = e.target.value);
+        }
+
+        function handleMouseDown(e) {
+            isDragging = true;
+            handleCanvasClick(e);
+        }
+
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / mapData.tile_size);
+            const y = Math.floor((e.clientY - rect.top) / mapData.tile_size);
+            
+            document.getElementById('coordinates').textContent = `x: ${x}, y: ${y}`;
+            
+            if (isDragging && currentTool === 'paint') {
+                handleCanvasClick(e);
+            }
+        }
+
+        function handleMouseUp(e) {
+            isDragging = false;
+        }
+
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / mapData.tile_size);
+            const y = Math.floor((e.clientY - rect.top) / mapData.tile_size);
+            
+            if (x < 0 || x >= mapData.width || y < 0 || y >= mapData.height) return;
+            
+            switch (currentTool) {
+                case 'paint':
+                    mapData.tiles[y][x] = selectedTile;
+                    render();
+                    break;
+                    
+                case 'fill':
+                    floodFill(x, y, mapData.tiles[y][x], selectedTile);
+                    render();
+                    break;
+                    
+                case 'spawn':
+                    mapData.spawn_point = { x, y };
+                    render();
+                    break;
+                    
+                case 'zone':
+                    if (!zoneStart) {
+                        zoneStart = { x, y };
+                    } else {
+                        const width = Math.abs(x - zoneStart.x) + 1;
+                        const height = Math.abs(y - zoneStart.y) + 1;
+                        const minX = Math.min(x, zoneStart.x);
+                        const minY = Math.min(y, zoneStart.y);
+                        
+                        document.getElementById('zone-x').value = minX;
+                        document.getElementById('zone-y').value = minY;
+                        document.getElementById('zone-width').value = width;
+                        document.getElementById('zone-height').value = height;
+                        
+                        showZonesModal();
+                        zoneStart = null;
+                    }
+                    break;
+            }
+        }
+
+        function floodFill(x, y, targetType, replacementType) {
+            if (targetType === replacementType) return;
+            if (mapData.tiles[y][x] !== targetType) return;
+            
+            const stack = [[x, y]];
+            
+            while (stack.length > 0) {
+                const [cx, cy] = stack.pop();
+                
+                if (cx < 0 || cx >= mapData.width || cy < 0 || cy >= mapData.height) continue;
+                if (mapData.tiles[cy][cx] !== targetType) continue;
+                
+                mapData.tiles[cy][cx] = replacementType;
+                
+                stack.push([cx + 1, cy]);
+                stack.push([cx - 1, cy]);
+                stack.push([cx, cy + 1]);
+                stack.push([cx, cy - 1]);
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw tiles
+            for (let y = 0; y < mapData.height; y++) {
+                for (let x = 0; x < mapData.width; x++) {
+                    const tileType = mapData.tiles[y][x];
+                    const color = TILE_TYPES[tileType]?.color || '#FF00FF';
+                    
+                    ctx.fillStyle = color;
+                    ctx.fillRect(
+                        x * mapData.tile_size,
+                        y * mapData.tile_size,
+                        mapData.tile_size,
+                        mapData.tile_size
+                    );
+                    
+                    // Draw grid lines
+                    ctx.strokeStyle = '#1a1a1a';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(
+                        x * mapData.tile_size,
+                        y * mapData.tile_size,
+                        mapData.tile_size,
+                        mapData.tile_size
+                    );
+                }
+            }
+            
+            // Draw spawn point
+            ctx.fillStyle = '#00FF00';
+            ctx.beginPath();
+            ctx.arc(
+                mapData.spawn_point.x * mapData.tile_size + mapData.tile_size / 2,
+                mapData.spawn_point.y * mapData.tile_size + mapData.tile_size / 2,
+                mapData.tile_size / 4,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Draw encounter zones
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+            ctx.lineWidth = 2;
+            for (const zone of mapData.encounter_zones) {
+                ctx.strokeRect(
+                    zone.rect.x * mapData.tile_size,
+                    zone.rect.y * mapData.tile_size,
+                    zone.rect.width * mapData.tile_size,
+                    zone.rect.height * mapData.tile_size
+                );
+            }
+        }
+
+        function clearMap() {
+            if (confirm('Clear the entire map? This cannot be undone.')) {
+                initializeMap();
+                mapData.transitions = [];
+                mapData.doors = [];
+                mapData.encounter_zones = [];
+                render();
+            }
+        }
+
+        // Modal functions
+        function showImportModal() {
+            document.getElementById('import-modal').style.display = 'flex';
+        }
+
+        function closeImportModal() {
+            document.getElementById('import-modal').style.display = 'none';
+            document.getElementById('import-message').innerHTML = '';
+        }
+
+        function importMap() {
+            const json = document.getElementById('import-json').value;
+            const messageEl = document.getElementById('import-message');
+            
+            try {
+                const imported = JSON.parse(json);
+                
+                // Validate required fields
+                if (!imported.tiles || !Array.isArray(imported.tiles)) {
+                    throw new Error('Invalid map format: missing tiles array');
+                }
+                
+                mapData = imported;
+                
+                // Update UI fields
+                document.getElementById('map-id').value = mapData.id || 'imported_map';
+                document.getElementById('map-name').value = mapData.name || 'Imported Map';
+                document.getElementById('map-width').value = mapData.width || mapData.tiles[0].length;
+                document.getElementById('map-height').value = mapData.height || mapData.tiles.length;
+                document.getElementById('tile-size').value = mapData.tile_size || 32;
+                
+                // Ensure defaults
+                mapData.spawn_point = mapData.spawn_point || { x: 0, y: 0 };
+                mapData.transitions = mapData.transitions || [];
+                mapData.doors = mapData.doors || [];
+                mapData.encounter_zones = mapData.encounter_zones || [];
+                
+                canvas.width = mapData.width * mapData.tile_size;
+                canvas.height = mapData.height * mapData.tile_size;
+                
+                render();
+                
+                messageEl.innerHTML = '<span class="success">Map imported successfully!</span>';
+                setTimeout(() => closeImportModal(), 1500);
+            } catch (e) {
+                messageEl.innerHTML = `<span class="error">Error: ${e.message}</span>`;
+            }
+        }
+
+        function exportMap() {
+            const json = JSON.stringify(mapData, null, 2);
+            document.getElementById('export-json').value = json;
+            document.getElementById('export-modal').style.display = 'flex';
+        }
+
+        function closeExportModal() {
+            document.getElementById('export-modal').style.display = 'none';
+        }
+
+        function copyToClipboard() {
+            const textarea = document.getElementById('export-json');
+            textarea.select();
+            document.execCommand('copy');
+            alert('Copied to clipboard!');
+        }
+
+        function downloadMap() {
+            const json = JSON.stringify(mapData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${mapData.id}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Transitions management
+        function showTransitionsModal() {
+            updateTransitionsList();
+            document.getElementById('transitions-modal').style.display = 'flex';
+        }
+
+        function closeTransitionsModal() {
+            document.getElementById('transitions-modal').style.display = 'none';
+        }
+
+        function updateTransitionsList() {
+            const list = document.getElementById('transitions-list');
+            list.innerHTML = '';
+            
+            mapData.transitions.forEach((trans, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <span>${trans.type} at (${trans.position.x}, ${trans.position.y}) → ${trans.target_map}</span>
+                    <button onclick="removeTransition(${index})">Remove</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function addTransition() {
+            const transition = {
+                position: {
+                    x: parseInt(document.getElementById('trans-x').value),
+                    y: parseInt(document.getElementById('trans-y').value)
+                },
+                type: document.getElementById('trans-type').value,
+                target_map: document.getElementById('trans-target-map').value,
+                target_position: {
+                    x: parseInt(document.getElementById('trans-target-x').value),
+                    y: parseInt(document.getElementById('trans-target-y').value)
+                }
+            };
+            
+            mapData.transitions.push(transition);
+            updateTransitionsList();
+            render();
+        }
+
+        function removeTransition(index) {
+            mapData.transitions.splice(index, 1);
+            updateTransitionsList();
+            render();
+        }
+
+        // Doors management
+        function showDoorsModal() {
+            updateDoorsList();
+            document.getElementById('doors-modal').style.display = 'flex';
+        }
+
+        function closeDoorsModal() {
+            document.getElementById('doors-modal').style.display = 'none';
+        }
+
+        function updateDoorsList() {
+            const list = document.getElementById('doors-list');
+            list.innerHTML = '';
+            
+            mapData.doors.forEach((door, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <span>Door at (${door.position.x}, ${door.position.y}) - ${door.is_open ? 'Open' : 'Closed'}</span>
+                    <button onclick="removeDoor(${index})">Remove</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function addDoor() {
+            const door = {
+                position: {
+                    x: parseInt(document.getElementById('door-x').value),
+                    y: parseInt(document.getElementById('door-y').value)
+                },
+                is_open: document.getElementById('door-open').value === 'true'
+            };
+            
+            mapData.doors.push(door);
+            updateDoorsList();
+        }
+
+        function removeDoor(index) {
+            mapData.doors.splice(index, 1);
+            updateDoorsList();
+        }
+
+        // Zones management
+        function showZonesModal() {
+            updateZonesList();
+            document.getElementById('zones-modal').style.display = 'flex';
+        }
+
+        function closeZonesModal() {
+            document.getElementById('zones-modal').style.display = 'none';
+        }
+
+        function updateZonesList() {
+            const list = document.getElementById('zones-list');
+            list.innerHTML = '';
+            
+            mapData.encounter_zones.forEach((zone, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <span>${zone.name}: (${zone.rect.x}, ${zone.rect.y}) ${zone.rect.width}x${zone.rect.height}</span>
+                    <button onclick="removeZone(${index})">Remove</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function addZone() {
+            const battles = document.getElementById('zone-battles').value
+                .split(',')
+                .map(b => b.trim())
+                .filter(b => b.length > 0);
+            
+            const zone = {
+                name: document.getElementById('zone-name').value,
+                rect: {
+                    x: parseInt(document.getElementById('zone-x').value),
+                    y: parseInt(document.getElementById('zone-y').value),
+                    width: parseInt(document.getElementById('zone-width').value),
+                    height: parseInt(document.getElementById('zone-height').value)
+                },
+                encounter_rate: parseFloat(document.getElementById('zone-rate').value),
+                possible_battles: battles
+            };
+            
+            mapData.encounter_zones.push(zone);
+            updateZonesList();
+            render();
+        }
+
+        function removeZone(index) {
+            mapData.encounter_zones.splice(index, 1);
+            updateZonesList();
+            render();
+        }
+    </script>
+</body>
+</html>
