@@ -9,6 +9,10 @@ var collected_items: Array = []
 var killed_enemies: Array = []
 var completed_events: Array = []
 var visited_maps: Array = []
+var inventory: Inventory
+
+func _init():
+	inventory = Inventory.new()
 
 static func vector_to_key(pos: Vector2) -> String:
 	return str(int(pos.x)) + "," + str(int(pos.y))
@@ -30,7 +34,8 @@ func to_dict() -> Dictionary:
 		"collected_items": collected_items,
 		"killed_enemies": killed_enemies,
 		"completed_events": completed_events,
-		"visited_maps": visited_maps
+		"visited_maps": visited_maps,
+		"inventory": inventory.to_dict()
 	}
 
 func from_dict(data: Dictionary):
@@ -44,6 +49,10 @@ func from_dict(data: Dictionary):
 	killed_enemies = data.get("killed_enemies", [])
 	completed_events = data.get("completed_events", [])
 	visited_maps = data.get("visited_maps", [])
+	
+	# Load inventory
+	if data.has("inventory"):
+		inventory.from_dict(data["inventory"])
 
 # Save/Load from file
 func save_to_file(path: String = "user://world_state.json") -> bool:
@@ -130,4 +139,5 @@ func reset():
 	killed_enemies.clear()
 	completed_events.clear()
 	visited_maps.clear()
+	inventory.clear_grid()
 	print("World state reset")

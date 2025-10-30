@@ -21,7 +21,7 @@
         }
 
         #sidebar {
-            width: 300px;
+            width: 320px;
             background: #252525;
             padding: 20px;
             overflow-y: auto;
@@ -157,12 +157,6 @@
             border-radius: 2px;
         }
 
-        .tool-group {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-        }
-
         .info-text {
             font-size: 12px;
             color: #888;
@@ -182,35 +176,6 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
-        }
-
-        #export-area {
-            display: none;
-        }
-
-        textarea {
-            width: 100%;
-            height: 300px;
-            background: #1a1a1a;
-            border: 1px solid #444;
-            color: #e0e0e0;
-            padding: 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            border-radius: 4px;
-            resize: vertical;
-        }
-
-        .error {
-            color: #ff6b6b;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-
-        .success {
-            color: #51cf66;
-            font-size: 12px;
-            margin-top: 5px;
         }
 
         .modal {
@@ -259,11 +224,40 @@
             font-size: 11px;
         }
 
-        .mini-input {
-            width: 60px;
-            display: inline-block;
-            padding: 4px;
-            margin: 0 4px;
+        textarea {
+            width: 100%;
+            height: 300px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        .error {
+            color: #ff6b6b;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .success {
+            color: #51cf66;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .door-indicator {
+            position: absolute;
+            pointer-events: none;
+            font-size: 10px;
+            background: rgba(139, 69, 19, 0.9);
+            color: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -299,14 +293,16 @@
             <button onclick="setTool('fill')">Fill</button>
             <button onclick="setTool('spawn')">Set Spawn</button>
             <button onclick="setTool('stairs')">Add Stairs</button>
-            <button onclick="setTool('door')">Add Door</button>
             <button onclick="setTool('zone')">Add Zone</button>
+        </div>
+        
+        <div class="info-text" style="margin-top: 10px;">
+            ðŸ’¡ Tip: After painting a door tile, click on it to configure locks!
         </div>
 
         <h3>Special Elements</h3>
         <div class="section">
             <button onclick="showTransitionsModal()">Manage Transitions</button>
-            <button onclick="showDoorsModal()">Manage Doors</button>
             <button onclick="showZonesModal()">Manage Zones</button>
         </div>
 
@@ -333,7 +329,7 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Import Modal -->
     <div id="import-modal" class="modal">
         <div class="modal-content">
             <h2>Import Map JSON</h2>
@@ -346,6 +342,7 @@
         </div>
     </div>
 
+    <!-- Export Modal -->
     <div id="export-modal" class="modal">
         <div class="modal-content">
             <h2>Export Map JSON</h2>
@@ -357,6 +354,39 @@
         </div>
     </div>
 
+    <!-- Door Configuration Modal -->
+    <div id="door-config-modal" class="modal">
+        <div class="modal-content">
+            <h2>Configure Door</h2>
+            <p class="info-text">Position: <strong id="door-config-pos"></strong></p>
+            
+            <label>Initially Open:</label>
+            <select id="door-config-open">
+                <option value="false">Closed</option>
+                <option value="true">Open</option>
+            </select>
+            
+            <label>Required Key (leave empty if no key required):</label>
+            <select id="door-config-key">
+                <option value="">None - No Key Required</option>
+                <option value="crane">Crane Key</option>
+                <option value="square">Square Key</option>
+                <option value="diamond">Diamond Key</option>
+                <option value="master">Master Key</option>
+            </select>
+            
+            <label>Lock Hint (shown when player tries to open without key):</label>
+            <input type="text" id="door-config-hint" placeholder="This door is locked. The lock has an engraving of a crane.">
+            
+            <div class="modal-buttons">
+                <button onclick="saveDoorConfig()">Save</button>
+                <button onclick="removeDoorConfig()">Remove Door Tile</button>
+                <button onclick="closeDoorConfigModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transitions Modal -->
     <div id="transitions-modal" class="modal">
         <div class="modal-content">
             <h2>Manage Transitions</h2>
@@ -384,27 +414,7 @@
         </div>
     </div>
 
-    <div id="doors-modal" class="modal">
-        <div class="modal-content">
-            <h2>Manage Doors</h2>
-            <div id="doors-list"></div>
-            <h3>Add New Door</h3>
-            <label>Position X:</label>
-            <input type="number" id="door-x" value="0" min="0">
-            <label>Position Y:</label>
-            <input type="number" id="door-y" value="0" min="0">
-            <label>Initially Open:</label>
-            <select id="door-open">
-                <option value="false">Closed</option>
-                <option value="true">Open</option>
-            </select>
-            <div class="modal-buttons">
-                <button onclick="addDoor()">Add</button>
-                <button onclick="closeDoorsModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Zones Modal -->
     <div id="zones-modal" class="modal">
         <div class="modal-content">
             <h2>Manage Encounter Zones</h2>
@@ -432,7 +442,6 @@
     </div>
 
     <script>
-        // Tile types with their colors
         const TILE_TYPES = {
             'wall': { color: '#333333', name: 'Wall' },
             'floor': { color: '#999999', name: 'Floor' },
@@ -446,7 +455,6 @@
             'window': { color: '#6AB0FF', name: 'Window' }
         };
 
-        // Editor state
         let mapData = {
             id: 'new_map',
             name: 'New Map',
@@ -464,9 +472,10 @@
         let currentTool = 'paint';
         let selectedTile = 'floor';
         let isDragging = false;
+        let isInitialClick = false;
         let zoneStart = null;
+        let currentDoorConfigPos = null;
 
-        // Initialize
         window.onload = function() {
             canvas = document.getElementById('map-canvas');
             ctx = canvas.getContext('2d');
@@ -495,7 +504,6 @@
             selectedTile = type;
             document.getElementById('current-tile').textContent = TILE_TYPES[type].name;
             
-            // Update palette selection
             document.querySelectorAll('.tile-button').forEach(btn => {
                 btn.classList.remove('selected');
             });
@@ -534,14 +542,12 @@
             mapData.name = document.getElementById('map-name').value;
             mapData.tile_size = newTileSize;
             
-            // Resize tiles array
             const oldTiles = mapData.tiles;
             mapData.tiles = [];
             
             for (let y = 0; y < newHeight; y++) {
                 const row = [];
                 for (let x = 0; x < newWidth; x++) {
-                    // Copy old tile if it exists, otherwise use wall
                     if (y < oldTiles.length && x < oldTiles[y].length) {
                         row.push(oldTiles[y][x]);
                     } else {
@@ -553,6 +559,13 @@
             
             mapData.width = newWidth;
             mapData.height = newHeight;
+            
+            // Remove doors that are now out of bounds or not on door tiles
+            mapData.doors = mapData.doors.filter(door => {
+                const x = door.position.x;
+                const y = door.position.y;
+                return x < newWidth && y < newHeight && mapData.tiles[y][x] === 'door';
+            });
             
             canvas.width = newWidth * newTileSize;
             canvas.height = newHeight * newTileSize;
@@ -566,13 +579,13 @@
             canvas.addEventListener('mouseup', handleMouseUp);
             canvas.addEventListener('mouseleave', handleMouseUp);
             
-            // Update map properties on input
             document.getElementById('map-id').addEventListener('input', (e) => mapData.id = e.target.value);
             document.getElementById('map-name').addEventListener('input', (e) => mapData.name = e.target.value);
         }
 
         function handleMouseDown(e) {
-            isDragging = true;
+            isInitialClick = true;
+            isDragging = false;
             handleCanvasClick(e);
         }
 
@@ -583,13 +596,21 @@
             
             document.getElementById('coordinates').textContent = `x: ${x}, y: ${y}`;
             
-            if (isDragging && currentTool === 'paint') {
+            // If mouse button is down and we've moved, we're dragging
+            if (isInitialClick) {
+                isDragging = true;
+                isInitialClick = false;
+            }
+            
+            // Only allow drag-painting for non-door tiles
+            if (isDragging && currentTool === 'paint' && selectedTile !== 'door') {
                 handleCanvasClick(e);
             }
         }
 
         function handleMouseUp(e) {
             isDragging = false;
+            isInitialClick = false;
         }
 
         function handleCanvasClick(e) {
@@ -601,7 +622,36 @@
             
             switch (currentTool) {
                 case 'paint':
+                    const oldTile = mapData.tiles[y][x];
+                    
+                    // Check if clicking on an existing door
+                    if (oldTile === 'door' && !isDragging) {
+                        // Open door config instead of painting over it
+                        openDoorConfig(x, y);
+                        return;
+                    }
+                    
+                    // Don't allow painting doors while dragging
+                    if (selectedTile === 'door' && isDragging) {
+                        return;
+                    }
+                    
                     mapData.tiles[y][x] = selectedTile;
+                    
+                    // If we painted over a door or painted away from a door, update door data
+                    if (oldTile === 'door' && selectedTile !== 'door') {
+                        // Removed a door tile, remove its config
+                        removeDoorAt(x, y);
+                    } else if (selectedTile === 'door' && oldTile !== 'door') {
+                        // Painted a new door, create default config
+                        ensureDoorConfig(x, y);
+                        
+                        // Open config for the new door
+                        if (!isDragging) {
+                            openDoorConfig(x, y);
+                        }
+                    }
+                    
                     render();
                     break;
                     
@@ -634,6 +684,98 @@
                     }
                     break;
             }
+        }
+
+        function ensureDoorConfig(x, y) {
+            // Check if door config already exists
+            const exists = mapData.doors.some(door => 
+                door.position.x === x && door.position.y === y
+            );
+            
+            if (!exists) {
+                mapData.doors.push({
+                    position: { x, y },
+                    is_open: false
+                });
+            }
+        }
+
+        function removeDoorAt(x, y) {
+            mapData.doors = mapData.doors.filter(door => 
+                !(door.position.x === x && door.position.y === y)
+            );
+        }
+
+        function openDoorConfig(x, y) {
+            currentDoorConfigPos = { x, y };
+            
+            // Find existing door config
+            const doorConfig = mapData.doors.find(door => 
+                door.position.x === x && door.position.y === y
+            );
+            
+            // Populate modal
+            document.getElementById('door-config-pos').textContent = `(${x}, ${y})`;
+            
+            if (doorConfig) {
+                document.getElementById('door-config-open').value = doorConfig.is_open ? 'true' : 'false';
+                document.getElementById('door-config-key').value = doorConfig.required_key || '';
+                document.getElementById('door-config-hint').value = doorConfig.lock_hint || '';
+            } else {
+                // Default values
+                document.getElementById('door-config-open').value = 'false';
+                document.getElementById('door-config-key').value = '';
+                document.getElementById('door-config-hint').value = '';
+            }
+            
+            document.getElementById('door-config-modal').style.display = 'flex';
+        }
+
+        function saveDoorConfig() {
+            if (!currentDoorConfigPos) return;
+            
+            const x = currentDoorConfigPos.x;
+            const y = currentDoorConfigPos.y;
+            
+            // Remove old config if exists
+            removeDoorAt(x, y);
+            
+            // Create new config
+            const doorConfig = {
+                position: { x, y },
+                is_open: document.getElementById('door-config-open').value === 'true'
+            };
+            
+            const requiredKey = document.getElementById('door-config-key').value;
+            if (requiredKey) {
+                doorConfig.required_key = requiredKey;
+                const customHint = document.getElementById('door-config-hint').value;
+                doorConfig.lock_hint = customHint || 
+                    `This door is locked. It requires the ${requiredKey} key.`;
+            }
+            
+            mapData.doors.push(doorConfig);
+            
+            closeDoorConfigModal();
+            render();
+        }
+
+        function removeDoorConfig() {
+            if (!currentDoorConfigPos) return;
+            
+            // Remove the door tile
+            mapData.tiles[currentDoorConfigPos.y][currentDoorConfigPos.x] = 'floor';
+            
+            // Remove the door config
+            removeDoorAt(currentDoorConfigPos.x, currentDoorConfigPos.y);
+            
+            closeDoorConfigModal();
+            render();
+        }
+
+        function closeDoorConfigModal() {
+            document.getElementById('door-config-modal').style.display = 'none';
+            currentDoorConfigPos = null;
         }
 
         function floodFill(x, y, targetType, replacementType) {
@@ -683,6 +825,24 @@
                         mapData.tile_size,
                         mapData.tile_size
                     );
+                    
+                    // Draw lock indicator on doors with keys
+                    if (tileType === 'door') {
+                        const doorConfig = mapData.doors.find(d => 
+                            d.position.x === x && d.position.y === y
+                        );
+                        
+                        if (doorConfig && doorConfig.required_key) {
+                            ctx.fillStyle = '#FFD700';
+                            ctx.font = 'bold 16px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText('ðŸ”’', 
+                                x * mapData.tile_size + mapData.tile_size / 2,
+                                y * mapData.tile_size + mapData.tile_size / 2
+                            );
+                        }
+                    }
                 }
             }
             
@@ -738,21 +898,18 @@
             try {
                 const imported = JSON.parse(json);
                 
-                // Validate required fields
                 if (!imported.tiles || !Array.isArray(imported.tiles)) {
                     throw new Error('Invalid map format: missing tiles array');
                 }
                 
                 mapData = imported;
                 
-                // Update UI fields
                 document.getElementById('map-id').value = mapData.id || 'imported_map';
                 document.getElementById('map-name').value = mapData.name || 'Imported Map';
                 document.getElementById('map-width').value = mapData.width || mapData.tiles[0].length;
                 document.getElementById('map-height').value = mapData.height || mapData.tiles.length;
                 document.getElementById('tile-size').value = mapData.tile_size || 32;
                 
-                // Ensure defaults
                 mapData.spawn_point = mapData.spawn_point || { x: 0, y: 0 };
                 mapData.transitions = mapData.transitions || [];
                 mapData.doors = mapData.doors || [];
@@ -771,6 +928,15 @@
         }
 
         function exportMap() {
+            // Clean up doors - only keep doors that have door tiles
+            mapData.doors = mapData.doors.filter(door => {
+                const x = door.position.x;
+                const y = door.position.y;
+                return x >= 0 && x < mapData.width && 
+                       y >= 0 && y < mapData.height && 
+                       mapData.tiles[y][x] === 'door';
+            });
+            
             const json = JSON.stringify(mapData, null, 2);
             document.getElementById('export-json').value = json;
             document.getElementById('export-modal').style.display = 'flex';
@@ -788,6 +954,15 @@
         }
 
         function downloadMap() {
+            // Clean up doors before export
+            mapData.doors = mapData.doors.filter(door => {
+                const x = door.position.x;
+                const y = door.position.y;
+                return x >= 0 && x < mapData.width && 
+                       y >= 0 && y < mapData.height && 
+                       mapData.tiles[y][x] === 'door';
+            });
+            
             const json = JSON.stringify(mapData, null, 2);
             const blob = new Blob([json], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -816,7 +991,7 @@
                 const item = document.createElement('div');
                 item.className = 'list-item';
                 item.innerHTML = `
-                    <span>${trans.type} at (${trans.position.x}, ${trans.position.y}) → ${trans.target_map}</span>
+                    <span>${trans.type} at (${trans.position.x}, ${trans.position.y}) â†’ ${trans.target_map}</span>
                     <button onclick="removeTransition(${index})">Remove</button>
                 `;
                 list.appendChild(item);
@@ -846,49 +1021,6 @@
             mapData.transitions.splice(index, 1);
             updateTransitionsList();
             render();
-        }
-
-        // Doors management
-        function showDoorsModal() {
-            updateDoorsList();
-            document.getElementById('doors-modal').style.display = 'flex';
-        }
-
-        function closeDoorsModal() {
-            document.getElementById('doors-modal').style.display = 'none';
-        }
-
-        function updateDoorsList() {
-            const list = document.getElementById('doors-list');
-            list.innerHTML = '';
-            
-            mapData.doors.forEach((door, index) => {
-                const item = document.createElement('div');
-                item.className = 'list-item';
-                item.innerHTML = `
-                    <span>Door at (${door.position.x}, ${door.position.y}) - ${door.is_open ? 'Open' : 'Closed'}</span>
-                    <button onclick="removeDoor(${index})">Remove</button>
-                `;
-                list.appendChild(item);
-            });
-        }
-
-        function addDoor() {
-            const door = {
-                position: {
-                    x: parseInt(document.getElementById('door-x').value),
-                    y: parseInt(document.getElementById('door-y').value)
-                },
-                is_open: document.getElementById('door-open').value === 'true'
-            };
-            
-            mapData.doors.push(door);
-            updateDoorsList();
-        }
-
-        function removeDoor(index) {
-            mapData.doors.splice(index, 1);
-            updateDoorsList();
         }
 
         // Zones management

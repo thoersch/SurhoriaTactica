@@ -1,0 +1,144 @@
+{
+  "items": [
+	{
+	  "id": "key_crane",
+	  "name": "Crane Key",
+	  "description": "An old brass key with a crane engraved on its bow. The metal is worn but the craftsmanship is exquisite.",
+	  "type": "key",
+	  "key_id": "crane",
+	  "icon": "res://icons/key_crane.png",
+	  "width": 1,
+	  "height": 1,
+	  "stackable": false,
+	  "max_stack": 1
+	},
+	{
+	  "id": "key_square",
+	  "name": "Square Key",
+	  "description": "A heavy iron key with a square-shaped bow. It feels cold to the touch.",
+	  "type": "key",
+	  "key_id": "square",
+	  "icon": "res://icons/key_square.png",
+	  "width": 1,
+	  "height": 1,
+	  "stackable": false,
+	  "max_stack": 1
+	},
+	{
+	  "id": "key_diamond",
+	  "name": "Diamond Key",
+	  "description": "A silver key with a diamond-shaped head. It gleams in the light.",
+	  "type": "key",
+	  "key_id": "diamond",
+	  "icon": "res://icons/key_diamond.png",
+	  "width": 1,
+	  "height": 1,
+	  "stackable": false,
+	  "max_stack": 1
+	},
+	{
+	  "id": "key_master",
+	  "name": "Master Key",
+	  "description": "A complex key that looks like it could open many locks. The engravings suggest it's important.",
+	  "type": "key",
+	  "key_id": "master",
+	  "icon": "res://icons/key_master.png",
+	  "width": 1,
+	  "height": 2,
+	  "stackable": false,
+	  "max_stack": 1
+	},
+	{
+	  "id": "health_herb",
+	  "name": "Medicinal Herb",
+	  "description": "A green herb with healing properties. Can restore some health when used.",
+	  "type": "consumable",
+	  "icon": "res://icons/herb.png",
+	  "width": 1,
+	  "height": 1,
+	  "stackable": true,
+	  "max_stack": 5,
+	  "heal_amount": 30,
+	  "effect_description": "Restores 30 HP"
+	},
+	{
+	  "id": "first_aid_spray",
+	  "name": "First Aid Spray",
+	  "description": "A medical spray that can fully restore health. Very valuable.",
+	  "type": "consumable",
+	  "icon": "res://icons/first_aid.png",
+	  "width": 1,
+	  "height": 2,
+	  "stackable": false,
+	  "max_stack": 1,
+	  "heal_amount": 999,
+	  "effect_description": "Fully restores HP"
+	},
+	{
+	  "id": "ammo_handgun",
+	  "name": "Handgun Ammo",
+	  "description": "9mm ammunition. Compatible with standard handguns.",
+	  "type": "ammo",
+	  "icon": "res://icons/ammo_handgun.png",
+	  "width": 1,
+	  "height": 1,
+	  "stackable": true,
+	  "max_stack": 30
+	},
+	{
+	  "id": "ammo_shotgun",
+	  "name": "Shotgun Shells",
+	  "description": "12-gauge shotgun shells. Powerful but limited capacity.",
+	  "type": "ammo",
+	  "icon": "res://icons/ammo_shotgun.png",
+	  "width": 1,
+	  "height": 1,
+	  "stackable": true,
+	  "max_stack": 15
+	},
+	{
+	  "id": "document_research_notes",
+	  "name": "Research Notes",
+	  "description": "Hastily written notes about the outbreak. The handwriting is frantic.",
+	  "type": "document",
+	  "icon": "res://icons/document.png",
+	  "width": 1,
+	  "height": 1,
+	  "stackable": false,
+	  "max_stack": 1
+	},
+	{
+	  "id": "valve_handle",
+	  "name": "Valve Handle",
+	  "description": "A metal valve handle. Might be useful for turning on water or gas systems.",
+	  "type": "quest_item",
+	  "icon": "res://icons/valve.png",
+	  "width": 2,
+	  "height": 2,
+	  "stackable": false,
+	  "max_stack": 1
+	},
+	{
+	  "id": "bolt_cutters",
+	  "name": "Bolt Cutters",
+	  "description": "Heavy-duty bolt cutters. Can cut through chains and padlocks.",
+	  "type": "quest_item",
+	  "icon": "res://icons/bolt_cutters.png",
+	  "width": 2,
+	  "height": 3,
+	  "stackable": false,
+	  "max_stack": 1
+	},
+	{
+	  "id": "fuse",
+	  "name": "Electrical Fuse",
+	  "description": "A replacement fuse. Might restore power to a circuit.",
+	  "type": "quest_item",
+	  "icon": "res://icons/fuse.png",
+	  "width": 1,
+	  "height": 1,
+	  "stackable": true,
+	  "max_stack": 3
+	}
+  ]
+}

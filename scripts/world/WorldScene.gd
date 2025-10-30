@@ -1,10 +1,13 @@
 extends Node2D
 
-var player: WorldPlayer  # Changed from ExplorationPlayer
+var player: WorldPlayer
 var world_state: WorldState
 var current_map_data: Dictionary = {}
 var tile_size: int = 32
 var collision_tiles: Array = []
+
+# UI for messages
+var message_label: Label
 
 # Rendering
 var tile_colors = {
@@ -19,8 +22,14 @@ var tile_colors = {
 func _ready():
 	print("WorldScene _ready() called")
 	
+	# Initialize item database
+	ItemDatabase.load_items()
+	
 	# Initialize world state
 	world_state = WorldState.new()
+	
+	# Setup message label
+	setup_message_ui()
 	
 	# Check if we're returning from battle
 	var returning_from_battle = false
@@ -53,17 +62,34 @@ func _ready():
 	# Apply position
 	if player:
 		if returning_from_battle and world_state.player_position != Vector2.ZERO:
-			# Returning from battle - use saved position
 			player.position = world_state.player_position
 			print("Player at saved position: ", player.position)
 		else:
-			# New game or map transition - use map's spawn point
 			world_state.player_position = player.position
 			print("Player at spawn point: ", player.position)
 	
 	if player:
 		player.battle_triggered.connect(_on_battle_triggered)
 		player.interaction_requested.connect(_on_interaction_requested)
+
+func setup_message_ui():
+	message_label = Label.new()
+	message_label.position = Vector2(20, 20)
+	message_label.add_theme_font_size_override("font_size", 16)
+	message_label.add_theme_color_override("font_color", Color.YELLOW)
+	message_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	message_label.add_theme_constant_override("outline_size", 2)
+	message_label.visible = false
+	add_child(message_label)
+
+func show_message(text: String, duration: float = 3.0):
+	message_label.text = text
+	message_label.visible = true
+	
+	# Hide after duration
+	await get_tree().create_timer(duration).timeout
+	if message_label:
+		message_label.visible = false
 
 func load_map(map_id: String, preserve_state: bool = false):
 	world_state.current_map_id = map_id
@@ -86,7 +112,6 @@ func load_map(map_id: String, preserve_state: bool = false):
 			world_state.mark_door_open(pos, door.get("is_open", false))
 	else:
 		print("Preserving loaded door states")
-		# Make sure any NEW doors (not in saved state) get default values
 		var doors = current_map_data.get("doors", [])
 		for door in doors:
 			var pos = Vector2(door.position.x, door.position.y)
@@ -101,7 +126,6 @@ func load_map(map_id: String, preserve_state: bool = false):
 	queue_redraw()
 
 func create_collision():
-	# Clear existing collision
 	for collision_body in collision_tiles:
 		collision_body.queue_free()
 	collision_tiles.clear()
@@ -114,11 +138,8 @@ func create_collision():
 			var tile_type = row[x]
 			var tile_pos = Vector2(x, y)
 			
-			# Create collision for walls
 			if tile_type == "wall":
 				create_collision_tile(x, y)
-			
-			# Create collision for closed doors
 			elif tile_type == "door" and not world_state.is_door_open(tile_pos):
 				create_collision_tile(x, y)
 
@@ -142,13 +163,11 @@ func spawn_player():
 	player = WorldPlayer.new()
 	player.tile_size = tile_size
 	
-	# Always spawn at the map's defined spawn point
 	var spawn = current_map_data.get("spawn_point", {"x": 2, "y": 10})
 	player.position = Vector2(spawn.x * tile_size + tile_size / 2, spawn.y * tile_size + tile_size / 2)
 	
 	add_child(player)
 	
-	# Setup camera
 	var camera = Camera2D.new()
 	camera.enabled = true
 	player.add_child(camera)
@@ -165,7 +184,6 @@ func _draw():
 			var tile_type = row[x]
 			var tile_pos = Vector2(x, y)
 			
-			# Check if this is a door and if it's open
 			if tile_type == "door" and world_state.is_door_open(tile_pos):
 				tile_type = "door_open"
 			
@@ -176,7 +194,6 @@ func _draw():
 			
 			# Draw special indicators
 			if tile_type == "stairs_up":
-				# Draw up arrow
 				draw_line(
 					Vector2(x * tile_size + tile_size / 2, y * tile_size + tile_size * 0.3),
 					Vector2(x * tile_size + tile_size / 2, y * tile_size + tile_size * 0.7),
@@ -193,7 +210,6 @@ func _draw():
 					Color.WHITE, 3.0
 				)
 			elif tile_type == "stairs_down":
-				# Draw down arrow
 				draw_line(
 					Vector2(x * tile_size + tile_size / 2, y * tile_size + tile_size * 0.3),
 					Vector2(x * tile_size + tile_size / 2, y * tile_size + tile_size * 0.7),
@@ -210,7 +226,6 @@ func _draw():
 					Color.WHITE, 3.0
 				)
 			
-			# Draw grid lines
 			draw_rect(rect, Color(0.1, 0.1, 0.1), false, 1.0)
 
 func _on_interaction_requested(tile_pos: Vector2):
@@ -225,23 +240,70 @@ func _on_interaction_requested(tile_pos: Vector2):
 	
 	var tile_type = tiles[int(tile_pos.y)][int(tile_pos.x)]
 	
-	# Handle doors
 	if tile_type == "door":
 		toggle_door(tile_pos)
-	
-	# Handle stairs
 	elif tile_type == "stairs_up" or tile_type == "stairs_down":
 		use_stairs(tile_pos)
 
 func toggle_door(tile_pos: Vector2):
 	var is_open = world_state.is_door_open(tile_pos)
-	world_state.mark_door_open(tile_pos, !is_open)
 	
-	print("Door ", "opened" if !is_open else "closed")
+	if is_open:
+		# Close door
+		world_state.mark_door_open(tile_pos, false)
+		show_message("Door closed.")
+		create_collision()
+		queue_redraw()
+		return
 	
-	# Recreate collision to update door collision
-	create_collision()
-	queue_redraw()
+	# Try to open door - check if locked
+	var door_data = get_door_data(tile_pos)
+	if door_data == null:
+		# No door data, just open it
+		world_state.mark_door_open(tile_pos, true)
+		show_message("Door opened.")
+		create_collision()
+		queue_redraw()
+		return
+	
+	var required_key = door_data.get("required_key", "")
+	var lock_hint = door_data.get("lock_hint", "This door is locked.")
+	
+	if required_key == "":
+		# No key required, open it
+		world_state.mark_door_open(tile_pos, true)
+		show_message("Door opened.")
+		create_collision()
+		queue_redraw()
+		return
+	
+	# Door requires a key
+	if world_state.inventory.has_key(required_key):
+		# Player has the key!
+		world_state.mark_door_open(tile_pos, true)
+		var key_name = get_key_name(required_key)
+		show_message("Used the " + key_name + ".")
+		create_collision()
+		queue_redraw()
+	else:
+		# Player doesn't have the key
+		show_message(lock_hint, 4.0)
+
+func get_door_data(tile_pos: Vector2) -> Dictionary:
+	"""Get door data from map"""
+	var doors = current_map_data.get("doors", [])
+	for door in doors:
+		var door_pos = Vector2(door.position.x, door.position.y)
+		if door_pos == tile_pos:
+			return door
+	return {}
+
+func get_key_name(key_id: String) -> String:
+	"""Get display name for a key"""
+	var item_data = ItemDatabase.get_item("key_" + key_id)
+	if not item_data.is_empty():
+		return item_data.get("name", key_id.capitalize() + " Key")
+	return key_id.capitalize() + " Key"
 
 func use_stairs(tile_pos: Vector2):
 	var transitions = current_map_data.get("transitions", [])
@@ -254,17 +316,13 @@ func use_stairs(tile_pos: Vector2):
 			return
 
 func transition_to_map(target_map: String, target_position: Dictionary):
-	# Save current position before transitioning
 	if player:
 		world_state.player_position = player.position
 	
-	# Save state
 	world_state.save_to_file()
 	
-	# Load new map - preserve state since we just saved it
 	load_map(target_map, true)
 	
-	# Set player to target position
 	if player:
 		world_state.player_position = Vector2(
 			target_position.x * tile_size + tile_size / 2,
@@ -274,8 +332,6 @@ func transition_to_map(target_map: String, target_position: Dictionary):
 
 func _on_battle_triggered():
 	print("Transitioning to battle...")
-	
-	# Determine which battle based on current zone
 	var battle_id = get_current_zone_battle()
 	transition_to_battle(battle_id)
 
@@ -294,16 +350,13 @@ func get_current_zone_battle() -> String:
 	return "battle_01_outbreak"
 
 func transition_to_battle(battle_id: String):
-	# Save current position and state
 	if player:
 		world_state.player_position = player.position
 	
 	world_state.save_to_file()
 	print("World state saved before battle")
 	
-	# Use GameManager to transition
 	if has_node("/root/GameManager"):
 		get_node("/root/GameManager").start_battle(battle_id)
 	else:
-		# Fallback
 		get_tree().change_scene_to_file("res://scenes/BattleScene.tscn")

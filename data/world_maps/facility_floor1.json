@@ -671,6 +671,15 @@
 		"y": 10
 	  },
 	  "is_open": false
+	},
+	{
+	  "position": {
+		"x": 23,
+		"y": 9
+	  },
+	  "is_open": false,
+	  "required_key": "crane",
+	  "lock_hint": "This door is locked. The lock has an engraving of a Crane on it."
 	}
   ],
   "encounter_zones": [
