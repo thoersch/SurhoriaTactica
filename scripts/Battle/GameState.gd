@@ -33,12 +33,14 @@ var ui_label: RichTextLabel
 var battle_label: Label
 var turn_label: Label
 var action_buttons: Control
+var game_root: Node
 
 func _init():
 	astar = AStar2D.new()
 	turn_manager = TurnManager.new()
 
-func initialize(game_root: Node):
+func initialize(game_root_node: Node):
+	game_root = game_root_node
 	TileTypeManager.load_tile_types()
 	setup_ui(game_root)
 	PlayerRoster.load_roster()
@@ -142,17 +144,34 @@ func setup_astar():
 					astar.connect_points(id, down_id)
 
 func setup_ui(parent: Node):
+	var panel_x = grid_width * grid_size + 20
 	battle_label = Label.new()
-	battle_label.position = Vector2(20, 10)
+	battle_label.position = Vector2(panel_x, 10)
 	battle_label.add_theme_font_size_override("font_size", 16)
 	parent.add_child(battle_label)
 	
 	turn_label = Label.new()
-	turn_label.position = Vector2(20, 35)
+	turn_label.position = Vector2(panel_x, 35)
 	turn_label.add_theme_font_size_override("font_size", 14)
 	parent.add_child(turn_label)
 	
-	var panel_x = grid_width * grid_size + 20
+	var phase_banner = Panel.new()
+	phase_banner.name = "PhaseBanner"
+	phase_banner.size = Vector2(400, 100)  # Will be resized dynamically
+	phase_banner.visible = false
+	phase_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	phase_banner.z_index = 100
+	parent.add_child(phase_banner)
+	
+	var phase_label = Label.new()
+	phase_label.name = "PhaseLabel"
+	phase_label.position = Vector2(0, 0)
+	phase_label.size = Vector2(400, 100)  # Will be resized dynamically
+	phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	phase_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	phase_label.add_theme_font_size_override("font_size", 48)
+	phase_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	phase_banner.add_child(phase_label)
 	
 	ui_panel = Panel.new()
 	ui_panel.position = Vector2(panel_x, 70)
@@ -187,6 +206,58 @@ func setup_ui(parent: Node):
 	end_turn_button.size = Vector2(230, 40)
 	end_turn_button.pressed.connect(_on_end_turn_button_pressed)
 	action_buttons.add_child(end_turn_button)
+
+func show_phase_banner(is_player: bool, parent: Node):
+	var banner = parent.get_node_or_null("PhaseBanner")
+	if not banner:
+		return
+	
+	var label = banner.get_node("PhaseLabel")
+	
+	# Get viewport dimensions
+	var viewport_width = get_viewport().get_visible_rect().size.x if get_viewport() else 1200
+	var banner_height = 100
+	var center_y = grid_height * grid_size / 2 - banner_height / 2
+	
+	# Resize banner to full width
+	banner.size = Vector2(viewport_width, banner_height)
+	label.size = Vector2(viewport_width, banner_height)
+	
+	# Set text and color
+	if is_player:
+		label.text = "PLAYER PHASE"
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.3, 0.5, 1.0)  # Blue
+		banner.add_theme_stylebox_override("panel", style)
+	else:
+		label.text = "ENEMY PHASE"
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(1.0, 0.3, 0.3)  # Red
+		banner.add_theme_stylebox_override("panel", style)
+	
+	# Make label text white and bold
+	label.add_theme_color_override("font_color", Color.WHITE)
+	
+	# Position: start off-screen to the left
+	banner.position = Vector2(-viewport_width, center_y)
+	banner.visible = true
+	banner.modulate.a = 0.9  # Solid, not fading
+	
+	var tween = parent.create_tween()
+	
+	# Slide in from left to center over 0.4 seconds
+	tween.tween_property(banner, "position:x", 0, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	
+	# Hold for 1.2 seconds
+	tween.tween_interval(1.2)
+	
+	# Slide out to the right over 0.4 seconds
+	tween.tween_property(banner, "position:x", viewport_width, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	
+	# Hide when done
+	tween.tween_callback(func(): 
+		banner.visible = false
+	)
 
 func update_battle_info():
 	battle_label.text = "Battle: " + current_battle_data.get("name", "Unknown")
@@ -239,6 +310,11 @@ func create_unit(parent: Node, grid_pos: Vector2, color: Color, data: Dictionary
 func _on_unit_clicked(unit: Unit):
 	print("Unit clicked: ", unit.unit_name, " Player: ", unit.is_player, " Turn: ", turn_manager.is_player_turn())
 	
+	# Can't interact with dead units
+	if not unit.is_alive():
+		print("Unit is dead!")
+		return
+	
 	if not turn_manager.is_player_turn():
 		print("Not player turn!")
 		return
@@ -249,7 +325,7 @@ func _on_unit_clicked(unit: Unit):
 			var distance = AIController.manhattan_distance(grid.selected_unit.grid_pos, unit.grid_pos)
 			print("Trying to attack enemy. Distance: ", distance, " Range: ", grid.selected_unit.attack_range)
 			if distance <= grid.selected_unit.attack_range:
-				attack_with_unit(grid.selected_unit, unit.grid_pos)  # Pass position instead of unit
+				attack_with_unit(grid.selected_unit, unit.grid_pos)
 		return
 	
 	if not unit.can_act():
@@ -329,7 +405,7 @@ func attack_with_unit(attacker: Unit, target_pos: Vector2):
 	# Get the primary target (if any)
 	var primary_target = null
 	for unit in units:
-		if unit.grid_pos == target_pos and unit.is_player != attacker.is_player:
+		if unit.grid_pos == target_pos and unit.is_player != attacker.is_player and unit.is_alive():
 			primary_target = unit
 			break
 	
@@ -337,10 +413,10 @@ func attack_with_unit(attacker: Unit, target_pos: Vector2):
 	var targets = []
 	if attacker.attack_aoe > 0:
 		targets = get_units_in_aoe(target_pos, attacker.attack_aoe)
-		# Filter to only enemy units
+		# Filter to only living enemy units
 		var enemy_targets = []
 		for unit in targets:
-			if unit.is_player != attacker.is_player:
+			if unit.is_player != attacker.is_player and unit.is_alive():
 				enemy_targets.append(unit)
 		targets = enemy_targets
 	elif primary_target:
@@ -361,16 +437,17 @@ func attack_with_unit(attacker: Unit, target_pos: Vector2):
 		
 		target.take_damage(damage)
 		
-		if not target.is_alive():
+		# Remove enemy units when they die, but keep player units as corpses
+		if not target.is_alive() and not target.is_player:
 			remove_unit(target)
+	
+	# Mark as attacked
+	attacker.has_attacked = true
 	
 	# Clear attack range and AoE preview
 	grid.set_attack_range([])
 	grid.set_min_range([])
 	grid.set_aoe_preview([])
-	
-	# Mark as attacked
-	attacker.has_attacked = true
 	
 	# Auto-end turn if unit has both moved and attacked
 	if attacker.has_moved and attacker.has_attacked:
@@ -390,6 +467,7 @@ func check_all_player_units_acted():
 	if not turn_manager.is_player_turn():
 		return
 	
+	# Check if all living player units have acted
 	var all_acted = true
 	for unit in player_units:
 		if unit.is_alive() and not unit.has_acted:
@@ -432,6 +510,9 @@ func end_player_turn():
 func _on_turn_changed(is_player_turn: bool):
 	update_turn_label()
 	
+	# Show phase banner
+	show_phase_banner(is_player_turn, game_root)
+	
 	# Reset all units for new turn
 	for unit in units:
 		unit.reset_turn()
@@ -439,8 +520,22 @@ func _on_turn_changed(is_player_turn: bool):
 	refresh_display()
 	
 	if not is_player_turn:
-		# Execute enemy turn
+		# Wait for banner animation to complete before enemy turn
+		await game_root.get_tree().create_timer(1.6).timeout
+		
+		# Check if scene still exists before executing enemy turn
+		if not is_instance_valid(grid) or not is_instance_valid(game_root):
+			print("Scene was freed, canceling enemy turn")
+			return
+		
+		# Execute enemy turn - pass the grid's scene tree
 		await AIController.execute_enemy_turn(self, grid.get_tree())
+		
+		# Check again if scene still exists
+		if not is_instance_valid(grid):
+			print("Scene was freed during enemy turn")
+			return
+		
 		check_battle_end()
 		
 		# Check if any enemies can still act

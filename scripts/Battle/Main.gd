@@ -40,7 +40,23 @@ func _on_battle_loaded(battle_id):
 	print("Battle loaded: " + battle_id)
 
 func _on_battle_won():
-	print("Victory! Battle won!")
+	# Wait a moment so player can see victory
+	await get_tree().create_timer(2.0).timeout
+	
+	# Return to world
+	if has_node("/root/GameManager"):
+		get_node("/root/GameManager").return_to_world()
+	else:
+		print("ERROR: GameManager not found!")
+		# Fallback - try direct scene change
+		get_tree().change_scene_to_file("res://scenes/WorldScene.tscn")
 
 func _on_battle_lost():
-	print("Defeat! Battle lost!")
+	await get_tree().create_timer(2.0).timeout
+	
+	if has_node("/root/GameManager"):
+		get_node("/root/GameManager").return_to_world()
+	else:
+		print("ERROR: GameManager not found!")
+		# Fallback
+		get_tree().change_scene_to_file("res://scenes/WorldScene.tscn")

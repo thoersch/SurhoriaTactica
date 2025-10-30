@@ -23,6 +23,7 @@ var has_moved: bool = false
 var has_attacked: bool = false
 var has_acted: bool = false
 var is_moving: bool = false
+var is_dead: bool = false
 var grid_size: int = 64
 
 func _init(pos: Vector2, color: Color, name: String, move_rng: int = 5, gs: int = 64, player: bool = true):
@@ -43,7 +44,7 @@ func reset_turn():
 	has_acted = false
 
 func can_act() -> bool:
-	return not has_acted and not is_moving
+	return not has_acted and not is_moving and is_alive()
 
 func can_move() -> bool:
 	return not has_moved and can_act()
@@ -60,6 +61,19 @@ func draw_unit():
 
 func _draw():
 	var radius = grid_size * 0.35
+	
+	if is_dead:
+		# Draw dark circle background
+		draw_circle(Vector2.ZERO, radius, Color(0.2, 0.2, 0.2))
+		
+		# Draw X mark for corpse (larger and more visible)
+		var x_size = radius * 1.2
+		draw_line(Vector2(-x_size, -x_size), Vector2(x_size, x_size), Color(0.6, 0.0, 0.0), 6.0)
+		draw_line(Vector2(x_size, -x_size), Vector2(-x_size, x_size), Color(0.6, 0.0, 0.0), 6.0)
+		
+		# Optional: Add a circle outline
+		draw_arc(Vector2.ZERO, radius, 0, TAU, 32, Color(0.4, 0.0, 0.0), 2.0)
+		return
 	
 	# Dimmed if already acted
 	var color = unit_color
@@ -168,10 +182,17 @@ func take_damage(amount: int):
 	health -= amount
 	if health < 0:
 		health = 0
+		die()
+	draw_unit()
+	
+func die():
+	is_dead = true
+	health = 0
+	has_acted = true  # Can't act when dead
 	draw_unit()
 
 func is_alive() -> bool:
-	return health > 0
+	return health > 0 and not is_dead
 
 func to_dict() -> Dictionary:
 	return {
@@ -192,7 +213,6 @@ func from_dict(data: Dictionary):
 	unit_name = data.get("name", "Unit")
 	move_range = data.get("move_range", 5)
 	attack_range = data.get("attack_range", 1)
-	attack_min_range = data.get("attack_min_range", 0)
 	attack_aoe = data.get("attack_aoe", 0)
 	health = data.get("health", 100)
 	max_health = data.get("max_health", 100)

@@ -11,9 +11,13 @@ config_version=5
 [application]
 
 config/name="SurhoriaTactica"
-run/main_scene="uid://dk2jppi7asj2e"
+run/main_scene="uid://1bx4mg8plo57"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+GameManager="*res://scripts/world/GameManager.gd"
 
 [rendering]
 

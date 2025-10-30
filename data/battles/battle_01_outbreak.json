@@ -18,7 +18,7 @@
 	  "attack_range": 1,
 	  "health": 60,
 	  "max_health": 60,
-	  "attack": 8,
+	  "attack": 20,
 	  "defense": 2
 	},
 	{
@@ -28,7 +28,7 @@
 	  "attack_range": 1,
 	  "health": 40,
 	  "max_health": 40,
-	  "attack": 10,
+	  "attack": 15,
 	  "defense": 3
 	}
   ]

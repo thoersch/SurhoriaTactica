@@ -1,0 +1,69 @@
+{
+  "id": "facility_floor2",
+  "name": "Research Facility - Floor 2",
+  "width": 30,
+  "height": 20,
+  "tile_size": 32,
+  "spawn_point": {"x": 2, "y": 10},
+  "tiles": [
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "floor", "floor", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "floor", "floor", "wall", "wall"],
+	["wall", "wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "door", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "wall"],
+	["wall", "wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "floor", "floor", "wall", "wall"],
+	["wall", "wall", "stairs_down", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "door", "floor", "floor", "floor", "floor", "wall", "wall"],
+	["wall", "wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "floor", "floor", "wall", "wall"],
+	["wall", "wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "door", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall", "floor", "floor", "floor", "floor", "floor", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "floor", "floor", "floor", "floor", "floor", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+  ],
+  "transitions": [
+	{
+	  "position": {"x": 2, "y": 10},
+	  "type": "stairs_down",
+	  "target_map": "facility_floor1",
+	  "target_position": {"x": 28, "y": 12}
+	}
+  ],
+  "doors": [
+	{"position": {"x": 12, "y": 8}, "is_open": false},
+	{"position": {"x": 23, "y": 10}, "is_open": false},
+	{"position": {"x": 12, "y": 12}, "is_open": false}
+  ],
+  "encounter_zones": [
+	{
+	  "name": "main_corridor",
+	  "rect": {"x": 2, "y": 8, "width": 21, "height": 5},
+	  "encounter_rate": 0.07,
+	  "possible_battles": ["battle_02_campsite", "battle_01_outbreak"]
+	},
+	{
+	  "name": "northwest_room",
+	  "rect": {"x": 7, "y": 6, "width": 5, "height": 2},
+	  "encounter_rate": 0.08,
+	  "possible_battles": ["battle_02_campsite"]
+	},
+	{
+	  "name": "northeast_room",
+	  "rect": {"x": 23, "y": 6, "width": 5, "height": 5},
+	  "encounter_rate": 0.08,
+	  "possible_battles": ["battle_02_campsite"]
+	},
+	{
+	  "name": "southwest_room",
+	  "rect": {"x": 7, "y": 13, "width": 5, "height": 2},
+	  "encounter_rate": 0.08,
+	  "possible_battles": ["battle_02_campsite"]
+	}
+  ]
+}
