@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surhoria Tactica - Battle Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 320px;
+            background: #252525;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid #333;
+        }
+
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #toolbar {
+            background: #252525;
+            padding: 15px 20px;
+            border-bottom: 2px solid #333;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        #canvas-container {
+            flex: 1;
+            overflow: auto;
+            background: #1a1a1a;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+            image-rendering: pixelated;
+        }
+
+        h2 {
+            color: #4a9eff;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        h3 {
+            color: #6ab0ff;
+            margin: 20px 0 10px 0;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: #b0b0b0;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #4a9eff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #3a8eef;
+        }
+
+        button:active {
+            background: #2a7edf;
+        }
+
+        button.danger {
+            background: #e63946;
+        }
+
+        button.danger:hover {
+            background: #d62839;
+        }
+
+        .tile-palette {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .tile-button {
+            padding: 12px 8px;
+            background: #1a1a1a;
+            border: 2px solid #444;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .tile-button:hover {
+            border-color: #6ab0ff;
+        }
+
+        .tile-button.selected {
+            border-color: #4a9eff;
+            background: #2a4a6a;
+        }
+
+        .color-preview {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            border: 1px solid #666;
+            vertical-align: middle;
+            margin-left: 8px;
+            border-radius: 2px;
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        #coordinates {
+            background: #1a1a1a;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #6ab0ff;
+            font-family: monospace;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #252525;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 2px solid #444;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .list-item {
+            background: #1a1a1a;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .list-item-content {
+            flex: 1;
+        }
+
+        .list-item button {
+            padding: 4px 12px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        .mini-input {
+            width: 70px;
+            display: inline-block;
+            padding: 4px;
+            margin: 0 4px;
+        }
+
+        .error {
+            color: #ff6b6b;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .success {
+            color: #51cf66;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .team-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .team-toggle button {
+            flex: 1;
+        }
+
+        .team-toggle button.active {
+            background: #51cf66;
+        }
+
+        .unit-marker {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            border: 2px solid white;
+            pointer-events: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-item label {
+            margin-bottom: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h2>Battle Properties</h2>
+        
+        <div class="section">
+            <label>Battle ID:</label>
+            <input type="text" id="battle-id" value="battle_new">
+            
+            <label>Battle Name:</label>
+            <input type="text" id="battle-name" value="New Battle">
+            
+            <label>Description:</label>
+            <textarea id="battle-description">Battle description goes here</textarea>
+            
+            <label>Grid Width:</label>
+            <input type="number" id="grid-width" value="12" min="5" max="30">
+            
+            <label>Grid Height:</label>
+            <input type="number" id="grid-height" value="8" min="5" max="30">
+            
+            <button onclick="resizeGrid()">Apply Size</button>
+        </div>
+
+        <h3>Tile Palette</h3>
+        <div class="tile-palette" id="tile-palette"></div>
+
+        <h3>Tools</h3>
+        <div class="button-group">
+            <button onclick="setTool('paint')">Paint Tiles</button>
+            <button onclick="setTool('fill')">Fill</button>
+            <button onclick="setTool('player')">Place Player</button>
+            <button onclick="setTool('enemy')">Place Enemy</button>
+            <button onclick="setTool('delete')">Delete Unit</button>
+        </div>
+
+        <h3>Units</h3>
+        <div class="section">
+            <button onclick="showPlayerPositionsModal()">Manage Player Positions</button>
+            <button onclick="showEnemiesModal()">Manage Enemies</button>
+        </div>
+
+        <h3>File Operations</h3>
+        <div class="button-group">
+            <button onclick="showImportModal()">Import JSON</button>
+            <button onclick="exportBattle()">Export JSON</button>
+            <button onclick="downloadBattle()">Download JSON</button>
+            <button class="danger" onclick="clearBattle()">Clear All</button>
+        </div>
+    </div>
+
+    <div id="main">
+        <div id="toolbar">
+            <span>Current Tool: <strong id="current-tool">Paint Tiles</strong></span>
+            <span>|</span>
+            <span>Selected Tile: <strong id="current-tile">floor</strong></span>
+            <span>|</span>
+            <span id="coordinates">x: 0, y: 0</span>
+            <span>|</span>
+            <span>Grid: <strong id="grid-info">12x8</strong></span>
+        </div>
+        
+        <div id="canvas-container">
+            <canvas id="battle-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="import-modal" class="modal">
+        <div class="modal-content">
+            <h2>Import Battle JSON</h2>
+            <textarea id="import-json" placeholder="Paste your battle JSON here..." style="height: 400px; font-family: monospace;"></textarea>
+            <div id="import-message"></div>
+            <div class="modal-buttons">
+                <button onclick="closeImportModal()">Cancel</button>
+                <button onclick="importBattle()">Import</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal">
+        <div class="modal-content">
+            <h2>Export Battle JSON</h2>
+            <textarea id="export-json" readonly style="height: 400px; font-family: monospace;"></textarea>
+            <div class="modal-buttons">
+                <button onclick="copyToClipboard()">Copy to Clipboard</button>
+                <button onclick="closeExportModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Positions Modal -->
+    <div id="player-positions-modal" class="modal">
+        <div class="modal-content">
+            <h2>Manage Player Starting Positions</h2>
+            <p class="info-text">Click positions on the map while this is open, or add manually below.</p>
+            <div id="player-positions-list"></div>
+            <h3>Add Position Manually</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <label>X Position:</label>
+                    <input type="number" id="player-pos-x" value="0" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Y Position:</label>
+                    <input type="number" id="player-pos-y" value="0" min="0">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button onclick="addPlayerPosition()">Add Position</button>
+                <button onclick="closePlayerPositionsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enemies Modal -->
+    <div id="enemies-modal" class="modal">
+        <div class="modal-content">
+            <h2>Manage Enemies</h2>
+            <p class="info-text">Click on the map while this is open to place enemies, or add manually below.</p>
+            <div id="enemies-list"></div>
+            <h3>Add New Enemy</h3>
+            <label>Enemy Name:</label>
+            <input type="text" id="enemy-name" placeholder="Zombie">
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <label>Position X:</label>
+                    <input type="number" id="enemy-x" value="0" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Position Y:</label>
+                    <input type="number" id="enemy-y" value="0" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Move Range:</label>
+                    <input type="number" id="enemy-move" value="3" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Attack Range:</label>
+                    <input type="number" id="enemy-attack-range" value="1" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Health:</label>
+                    <input type="number" id="enemy-health" value="60" min="1">
+                </div>
+                <div class="stat-item">
+                    <label>Max Health:</label>
+                    <input type="number" id="enemy-max-health" value="60" min="1">
+                </div>
+                <div class="stat-item">
+                    <label>Attack Power:</label>
+                    <input type="number" id="enemy-attack" value="20" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Defense:</label>
+                    <input type="number" id="enemy-defense" value="2" min="0">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button onclick="addEnemy()">Add Enemy</button>
+                <button onclick="closeEnemiesModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Enemy Modal -->
+    <div id="edit-enemy-modal" class="modal">
+        <div class="modal-content">
+            <h2>Edit Enemy</h2>
+            <input type="hidden" id="edit-enemy-index">
+            
+            <label>Enemy Name:</label>
+            <input type="text" id="edit-enemy-name" placeholder="Zombie">
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <label>Position X:</label>
+                    <input type="number" id="edit-enemy-x" value="0" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Position Y:</label>
+                    <input type="number" id="edit-enemy-y" value="0" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Move Range:</label>
+                    <input type="number" id="edit-enemy-move" value="3" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Attack Range:</label>
+                    <input type="number" id="edit-enemy-attack-range" value="1" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Health:</label>
+                    <input type="number" id="edit-enemy-health" value="60" min="1">
+                </div>
+                <div class="stat-item">
+                    <label>Max Health:</label>
+                    <input type="number" id="edit-enemy-max-health" value="60" min="1">
+                </div>
+                <div class="stat-item">
+                    <label>Attack Power:</label>
+                    <input type="number" id="edit-enemy-attack" value="20" min="0">
+                </div>
+                <div class="stat-item">
+                    <label>Defense:</label>
+                    <input type="number" id="edit-enemy-defense" value="2" min="0">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button onclick="saveEnemyEdit()">Save Changes</button>
+                <button onclick="closeEditEnemyModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tile types with their colors
+        const TILE_TYPES = {
+            'wall': { color: '#333333', name: 'Wall' },
+            'floor': { color: '#999999', name: 'Floor' },
+            'door': { color: '#8B4513', name: 'Door' },
+            'crate': { color: '#A0806A', name: 'Crate' },
+            'sandbag': { color: '#8A8A6A', name: 'Sandbag' },
+            'rubble': { color: '#666666', name: 'Rubble' },
+            'water': { color: '#2244AA', name: 'Water' },
+            'window': { color: '#6AB0FF', name: 'Window' }
+        };
+
+        const GRID_SIZE = 64; // Pixel size of each grid cell
+
+        // Battle data structure
+        let battleData = {
+            id: 'battle_new',
+            name: 'New Battle',
+            description: 'Battle description goes here',
+            grid_width: 12,
+            grid_height: 8,
+            tiles: [],
+            player_positions: [],
+            enemies: []
+        };
+
+        let canvas, ctx;
+        let currentTool = 'paint';
+        let selectedTile = 'floor';
+        let isDragging = false;
+
+        // Initialize
+        window.onload = function() {
+            canvas = document.getElementById('battle-canvas');
+            ctx = canvas.getContext('2d');
+            
+            initializeTilePalette();
+            initializeBattle();
+            setupEventListeners();
+            render();
+        };
+
+        function initializeTilePalette() {
+            const palette = document.getElementById('tile-palette');
+            palette.innerHTML = '';
+            
+            for (const [type, data] of Object.entries(TILE_TYPES)) {
+                const button = document.createElement('div');
+                button.className = 'tile-button';
+                if (type === selectedTile) button.classList.add('selected');
+                button.innerHTML = `${data.name}<span class="color-preview" style="background: ${data.color}"></span>`;
+                button.onclick = () => selectTile(type);
+                palette.appendChild(button);
+            }
+        }
+
+        function selectTile(type) {
+            selectedTile = type;
+            document.getElementById('current-tile').textContent = TILE_TYPES[type].name;
+            
+            // Update palette selection
+            document.querySelectorAll('.tile-button').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.closest('.tile-button').classList.add('selected');
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            const toolNames = {
+                'paint': 'Paint Tiles',
+                'fill': 'Fill',
+                'player': 'Place Player',
+                'enemy': 'Place Enemy',
+                'delete': 'Delete Unit'
+            };
+            document.getElementById('current-tool').textContent = toolNames[tool];
+        }
+
+        function initializeBattle() {
+            battleData.tiles = [];
+            for (let y = 0; y < battleData.grid_height; y++) {
+                const row = [];
+                for (let x = 0; x < battleData.grid_width; x++) {
+                    row.push('floor');
+                }
+                battleData.tiles.push(row);
+            }
+            
+            canvas.width = battleData.grid_width * GRID_SIZE;
+            canvas.height = battleData.grid_height * GRID_SIZE;
+            
+            updateGridInfo();
+        }
+
+        function updateGridInfo() {
+            document.getElementById('grid-info').textContent = 
+                `${battleData.grid_width}x${battleData.grid_height}`;
+        }
+
+        function resizeGrid() {
+            const newWidth = parseInt(document.getElementById('grid-width').value);
+            const newHeight = parseInt(document.getElementById('grid-height').value);
+            
+            battleData.id = document.getElementById('battle-id').value;
+            battleData.name = document.getElementById('battle-name').value;
+            battleData.description = document.getElementById('battle-description').value;
+            
+            // Resize tiles array
+            const oldTiles = battleData.tiles;
+            battleData.tiles = [];
+            
+            for (let y = 0; y < newHeight; y++) {
+                const row = [];
+                for (let x = 0; x < newWidth; x++) {
+                    if (y < oldTiles.length && x < oldTiles[y].length) {
+                        row.push(oldTiles[y][x]);
+                    } else {
+                        row.push('floor');
+                    }
+                }
+                battleData.tiles.push(row);
+            }
+            
+            battleData.grid_width = newWidth;
+            battleData.grid_height = newHeight;
+            
+            // Remove units that are now out of bounds
+            battleData.player_positions = battleData.player_positions.filter(
+                pos => pos.x < newWidth && pos.y < newHeight
+            );
+            battleData.enemies = battleData.enemies.filter(
+                enemy => enemy.position.x < newWidth && enemy.position.y < newHeight
+            );
+            
+            canvas.width = newWidth * GRID_SIZE;
+            canvas.height = newHeight * GRID_SIZE;
+            
+            updateGridInfo();
+            render();
+        }
+
+        function setupEventListeners() {
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp);
+            
+            // Update battle properties on input
+            document.getElementById('battle-id').addEventListener('input', (e) => battleData.id = e.target.value);
+            document.getElementById('battle-name').addEventListener('input', (e) => battleData.name = e.target.value);
+            document.getElementById('battle-description').addEventListener('input', (e) => battleData.description = e.target.value);
+        }
+
+        function handleMouseDown(e) {
+            isDragging = true;
+            handleCanvasClick(e);
+        }
+
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / GRID_SIZE);
+            const y = Math.floor((e.clientY - rect.top) / GRID_SIZE);
+            
+            document.getElementById('coordinates').textContent = `x: ${x}, y: ${y}`;
+            
+            if (isDragging && currentTool === 'paint') {
+                handleCanvasClick(e);
+            }
+        }
+
+        function handleMouseUp(e) {
+            isDragging = false;
+        }
+
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / GRID_SIZE);
+            const y = Math.floor((e.clientY - rect.top) / GRID_SIZE);
+            
+            if (x < 0 || x >= battleData.grid_width || y < 0 || y >= battleData.grid_height) return;
+            
+            switch (currentTool) {
+                case 'paint':
+                    battleData.tiles[y][x] = selectedTile;
+                    render();
+                    break;
+                    
+                case 'fill':
+                    floodFill(x, y, battleData.tiles[y][x], selectedTile);
+                    render();
+                    break;
+                    
+                case 'player':
+                    addPlayerPositionAt(x, y);
+                    break;
+                    
+                case 'enemy':
+                    // If enemies modal is open, add there with position
+                    if (document.getElementById('enemies-modal').style.display === 'flex') {
+                        document.getElementById('enemy-x').value = x;
+                        document.getElementById('enemy-y').value = y;
+                    } else {
+                        document.getElementById('enemy-x').value = x;
+                        document.getElementById('enemy-y').value = y;
+                        showEnemiesModal();
+                    }
+                    break;
+                    
+                case 'delete':
+                    deleteUnitAt(x, y);
+                    break;
+            }
+        }
+
+        function floodFill(x, y, targetType, replacementType) {
+            if (targetType === replacementType) return;
+            if (battleData.tiles[y][x] !== targetType) return;
+            
+            const stack = [[x, y]];
+            
+            while (stack.length > 0) {
+                const [cx, cy] = stack.pop();
+                
+                if (cx < 0 || cx >= battleData.grid_width || cy < 0 || cy >= battleData.grid_height) continue;
+                if (battleData.tiles[cy][cx] !== targetType) continue;
+                
+                battleData.tiles[cy][cx] = replacementType;
+                
+                stack.push([cx + 1, cy]);
+                stack.push([cx - 1, cy]);
+                stack.push([cx, cy + 1]);
+                stack.push([cx, cy - 1]);
+            }
+        }
+
+        function addPlayerPositionAt(x, y) {
+            // Check if position already exists
+            const exists = battleData.player_positions.some(pos => pos.x === x && pos.y === y);
+            if (!exists) {
+                battleData.player_positions.push({ x, y });
+                render();
+                if (document.getElementById('player-positions-modal').style.display === 'flex') {
+                    updatePlayerPositionsList();
+                }
+            }
+        }
+
+        function deleteUnitAt(x, y) {
+            // Remove player position
+            battleData.player_positions = battleData.player_positions.filter(
+                pos => !(pos.x === x && pos.y === y)
+            );
+            
+            // Remove enemy
+            battleData.enemies = battleData.enemies.filter(
+                enemy => !(enemy.position.x === x && enemy.position.y === y)
+            );
+            
+            render();
+            
+            // Update modal lists if open
+            if (document.getElementById('player-positions-modal').style.display === 'flex') {
+                updatePlayerPositionsList();
+            }
+            if (document.getElementById('enemies-modal').style.display === 'flex') {
+                updateEnemiesList();
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw tiles
+            for (let y = 0; y < battleData.grid_height; y++) {
+                for (let x = 0; x < battleData.grid_width; x++) {
+                    const tileType = battleData.tiles[y][x];
+                    const color = TILE_TYPES[tileType]?.color || '#FF00FF';
+                    
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                    
+                    // Draw grid lines
+                    ctx.strokeStyle = '#1a1a1a';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                }
+            }
+            
+            // Draw player positions (blue circles with P)
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            for (const pos of battleData.player_positions) {
+                const centerX = pos.x * GRID_SIZE + GRID_SIZE / 2;
+                const centerY = pos.y * GRID_SIZE + GRID_SIZE / 2;
+                
+                // Blue circle
+                ctx.fillStyle = '#4a9eff';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, GRID_SIZE * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // White border
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // P text
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('P', centerX, centerY);
+            }
+            
+            // Draw enemies (red circles with E)
+            for (const enemy of battleData.enemies) {
+                const centerX = enemy.position.x * GRID_SIZE + GRID_SIZE / 2;
+                const centerY = enemy.position.y * GRID_SIZE + GRID_SIZE / 2;
+                
+                // Red circle
+                ctx.fillStyle = '#e63946';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, GRID_SIZE * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // White border
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // E text
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('E', centerX, centerY);
+            }
+        }
+
+        function clearBattle() {
+            if (confirm('Clear the entire battle? This cannot be undone.')) {
+                initializeBattle();
+                battleData.player_positions = [];
+                battleData.enemies = [];
+                render();
+            }
+        }
+
+        // Modal functions
+        function showImportModal() {
+            document.getElementById('import-modal').style.display = 'flex';
+        }
+
+        function closeImportModal() {
+            document.getElementById('import-modal').style.display = 'none';
+            document.getElementById('import-message').innerHTML = '';
+        }
+
+        function importBattle() {
+            const json = document.getElementById('import-json').value;
+            const messageEl = document.getElementById('import-message');
+            
+            try {
+                const imported = JSON.parse(json);
+                
+                // Validate required fields
+                if (!imported.tiles || !Array.isArray(imported.tiles)) {
+                    throw new Error('Invalid battle format: missing tiles array');
+                }
+                
+                battleData = imported;
+                
+                // Update UI fields
+                document.getElementById('battle-id').value = battleData.id || 'battle_new';
+                document.getElementById('battle-name').value = battleData.name || 'New Battle';
+                document.getElementById('battle-description').value = battleData.description || '';
+                document.getElementById('grid-width').value = battleData.grid_width || battleData.tiles[0].length;
+                document.getElementById('grid-height').value = battleData.grid_height || battleData.tiles.length;
+                
+                // Ensure defaults
+                battleData.player_positions = battleData.player_positions || [];
+                battleData.enemies = battleData.enemies || [];
+                
+                canvas.width = battleData.grid_width * GRID_SIZE;
+                canvas.height = battleData.grid_height * GRID_SIZE;
+                
+                updateGridInfo();
+                render();
+                
+                messageEl.innerHTML = '<span class="success">Battle imported successfully!</span>';
+                setTimeout(() => closeImportModal(), 1500);
+            } catch (e) {
+                messageEl.innerHTML = `<span class="error">Error: ${e.message}</span>`;
+            }
+        }
+
+        function exportBattle() {
+            const json = JSON.stringify(battleData, null, 2);
+            document.getElementById('export-json').value = json;
+            document.getElementById('export-modal').style.display = 'flex';
+        }
+
+        function closeExportModal() {
+            document.getElementById('export-modal').style.display = 'none';
+        }
+
+        function copyToClipboard() {
+            const textarea = document.getElementById('export-json');
+            textarea.select();
+            document.execCommand('copy');
+            alert('Copied to clipboard!');
+        }
+
+        function downloadBattle() {
+            const json = JSON.stringify(battleData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${battleData.id}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Player Positions Management
+        function showPlayerPositionsModal() {
+            updatePlayerPositionsList();
+            document.getElementById('player-positions-modal').style.display = 'flex';
+        }
+
+        function closePlayerPositionsModal() {
+            document.getElementById('player-positions-modal').style.display = 'none';
+        }
+
+        function updatePlayerPositionsList() {
+            const list = document.getElementById('player-positions-list');
+            list.innerHTML = '';
+            
+            if (battleData.player_positions.length === 0) {
+                list.innerHTML = '<p class="info-text">No player positions set. Click on the map or add manually below.</p>';
+                return;
+            }
+            
+            battleData.player_positions.forEach((pos, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div class="list-item-content">
+                        <strong>Player ${index + 1}:</strong> Position (${pos.x}, ${pos.y})
+                    </div>
+                    <button onclick="removePlayerPosition(${index})">Remove</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function addPlayerPosition() {
+            const x = parseInt(document.getElementById('player-pos-x').value);
+            const y = parseInt(document.getElementById('player-pos-y').value);
+            
+            if (x >= 0 && x < battleData.grid_width && y >= 0 && y < battleData.grid_height) {
+                addPlayerPositionAt(x, y);
+            } else {
+                alert('Position out of bounds!');
+            }
+        }
+
+        function removePlayerPosition(index) {
+            battleData.player_positions.splice(index, 1);
+            updatePlayerPositionsList();
+            render();
+        }
+
+        // Enemies Management
+        function showEnemiesModal() {
+            updateEnemiesList();
+            document.getElementById('enemies-modal').style.display = 'flex';
+        }
+
+        function closeEnemiesModal() {
+            document.getElementById('enemies-modal').style.display = 'none';
+        }
+
+        function updateEnemiesList() {
+            const list = document.getElementById('enemies-list');
+            list.innerHTML = '';
+            
+            if (battleData.enemies.length === 0) {
+                list.innerHTML = '<p class="info-text">No enemies placed. Click on the map or add manually below.</p>';
+                return;
+            }
+            
+            battleData.enemies.forEach((enemy, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div class="list-item-content">
+                        <strong>${enemy.name}</strong><br>
+                        <small>Pos: (${enemy.position.x}, ${enemy.position.y}) | HP: ${enemy.health} | ATK: ${enemy.attack} | DEF: ${enemy.defense}</small>
+                    </div>
+                    <button onclick="editEnemy(${index})">Edit</button>
+                    <button onclick="removeEnemy(${index})">Remove</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function addEnemy() {
+            const enemy = {
+                name: document.getElementById('enemy-name').value || 'Enemy',
+                position: {
+                    x: parseInt(document.getElementById('enemy-x').value),
+                    y: parseInt(document.getElementById('enemy-y').value)
+                },
+                move_range: parseInt(document.getElementById('enemy-move').value),
+                attack_range: parseInt(document.getElementById('enemy-attack-range').value),
+                health: parseInt(document.getElementById('enemy-health').value),
+                max_health: parseInt(document.getElementById('enemy-max-health').value),
+                attack: parseInt(document.getElementById('enemy-attack').value),
+                defense: parseInt(document.getElementById('enemy-defense').value)
+            };
+            
+            if (enemy.position.x >= 0 && enemy.position.x < battleData.grid_width &&
+                enemy.position.y >= 0 && enemy.position.y < battleData.grid_height) {
+                battleData.enemies.push(enemy);
+                updateEnemiesList();
+                render();
+            } else {
+                alert('Enemy position out of bounds!');
+            }
+        }
+
+        function removeEnemy(index) {
+            battleData.enemies.splice(index, 1);
+            updateEnemiesList();
+            render();
+        }
+
+        function editEnemy(index) {
+            const enemy = battleData.enemies[index];
+            
+            document.getElementById('edit-enemy-index').value = index;
+            document.getElementById('edit-enemy-name').value = enemy.name;
+            document.getElementById('edit-enemy-x').value = enemy.position.x;
+            document.getElementById('edit-enemy-y').value = enemy.position.y;
+            document.getElementById('edit-enemy-move').value = enemy.move_range;
+            document.getElementById('edit-enemy-attack-range').value = enemy.attack_range;
+            document.getElementById('edit-enemy-health').value = enemy.health;
+            document.getElementById('edit-enemy-max-health').value = enemy.max_health;
+            document.getElementById('edit-enemy-attack').value = enemy.attack;
+            document.getElementById('edit-enemy-defense').value = enemy.defense;
+            
+            document.getElementById('edit-enemy-modal').style.display = 'flex';
+        }
+
+        function closeEditEnemyModal() {
+            document.getElementById('edit-enemy-modal').style.display = 'none';
+        }
+
+        function saveEnemyEdit() {
+            const index = parseInt(document.getElementById('edit-enemy-index').value);
+            
+            battleData.enemies[index] = {
+                name: document.getElementById('edit-enemy-name').value,
+                position: {
+                    x: parseInt(document.getElementById('edit-enemy-x').value),
+                    y: parseInt(document.getElementById('edit-enemy-y').value)
+                },
+                move_range: parseInt(document.getElementById('edit-enemy-move').value),
+                attack_range: parseInt(document.getElementById('edit-enemy-attack-range').value),
+                health: parseInt(document.getElementById('edit-enemy-health').value),
+                max_health: parseInt(document.getElementById('edit-enemy-max-health').value),
+                attack: parseInt(document.getElementById('edit-enemy-attack').value),
+                defense: parseInt(document.getElementById('edit-enemy-defense').value)
+            };
+            
+            closeEditEnemyModal();
+            updateEnemiesList();
+            render();
+        }
+    </script>
+</body>
+</html>

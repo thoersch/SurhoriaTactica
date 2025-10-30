@@ -5,24 +5,140 @@
   "grid_width": 12,
   "grid_height": 8,
   "tiles": [
-	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
-	["wall", "floor", "floor", "crate", "crate", "wall", "wall", "crate", "floor", "floor", "floor", "wall"],
-	["wall", "floor", "floor", "crate", "crate", "door", "door", "crate", "floor", "floor", "floor", "wall"],
-	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
-	["wall", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "wall"],
-	["wall", "floor", "floor", "sandbag", "sandbag", "door", "door", "sandbag", "floor", "floor", "floor", "wall"],
-	["wall", "floor", "floor", "sandbag", "sandbag", "wall", "wall", "sandbag", "floor", "floor", "floor", "wall"],
-	["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"]
+	[
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall"
+	],
+	[
+	  "wall",
+	  "rubble",
+	  "rubble",
+	  "floor",
+	  "floor",
+	  "wall",
+	  "wall",
+	  "rubble",
+	  "sandbag",
+	  "sandbag",
+	  "rubble",
+	  "wall"
+	],
+	[
+	  "wall",
+	  "rubble",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "wall"
+	],
+	[
+	  "wall",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "crate",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "wall"
+	],
+	[
+	  "wall",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "crate",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "wall"
+	],
+	[
+	  "wall",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "crate",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "wall"
+	],
+	[
+	  "wall",
+	  "rubble",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "wall",
+	  "wall",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "wall"
+	],
+	[
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall"
+	]
   ],
   "player_positions": [
-	{"x": 2, "y": 3},
-	{"x": 3, "y": 4},
-	{"x": 2, "y": 5}
+	{
+	  "x": 2,
+	  "y": 3
+	},
+	{
+	  "x": 3,
+	  "y": 4
+	},
+	{
+	  "x": 2,
+	  "y": 5
+	}
   ],
   "enemies": [
 	{
 	  "name": "Zombie",
-	  "position": {"x": 9, "y": 3},
+	  "position": {
+		"x": 9,
+		"y": 3
+	  },
 	  "move_range": 3,
 	  "attack_range": 1,
 	  "health": 60,
@@ -32,7 +148,10 @@
 	},
 	{
 	  "name": "Zombie Dog",
-	  "position": {"x": 10, "y": 5},
+	  "position": {
+		"x": 10,
+		"y": 5
+	  },
 	  "move_range": 6,
 	  "attack_range": 1,
 	  "health": 40,
