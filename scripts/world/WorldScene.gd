@@ -24,6 +24,15 @@ var tile_colors = {
 	"stairs_down": Color(0.3, 0.3, 0.6)
 }
 
+# Object rendering emojis (matching the editor)
+var object_emojis = {
+	"item": "📦",
+	"npc": "👤",
+	"battle_trigger": "⚔️",
+	"event": "⭐",
+	"examine": "🔍"
+}
+
 func _ready():
 	print("WorldScene _ready() called")
 	
@@ -223,6 +232,10 @@ func load_map(map_id: String, preserve_state: bool = false):
 	create_collision()
 	load_interactables()
 	
+	# Load objects if not already loaded
+	if not current_map_data.has("objects"):
+		current_map_data["objects"] = []
+	
 	print("Loaded map: ", current_map_data.get("name", "Unknown"))
 	print("Door states: ", world_state.door_states)
 	queue_redraw()
@@ -315,6 +328,7 @@ func _draw():
 	
 	var tiles = current_map_data.get("tiles", [])
 	
+	# Draw tiles
 	for y in range(tiles.size()):
 		var row = tiles[y]
 		for x in range(row.size()):
@@ -329,7 +343,7 @@ func _draw():
 			var rect = Rect2(x * tile_size, y * tile_size, tile_size, tile_size)
 			draw_rect(rect, color)
 			
-			# Draw special indicators
+			# Draw special indicators for stairs
 			if tile_type == "stairs_up":
 				draw_line(
 					Vector2(x * tile_size + tile_size / 2, y * tile_size + tile_size * 0.3),
@@ -363,11 +377,35 @@ func _draw():
 					Color.WHITE, 3.0
 				)
 			
+			# Grid lines
 			draw_rect(rect, Color(0.1, 0.1, 0.1), false, 1.0)
 	
-	# Draw interactables
+	# Draw interactables (containers/documents)
 	for interactable in interactables:
 		draw_interactable(interactable)
+	
+	# Draw objects (new system)
+	var objects = current_map_data.get("objects", [])
+	var font = ThemeDB.fallback_font
+	var font_size = 20
+	
+	for obj in objects:
+		# Skip if object has been collected/interacted with
+		if is_object_consumed(obj.id):
+			continue
+		
+		var pos = obj.position
+		var center_x = pos.x * tile_size + tile_size / 2
+		var center_y = pos.y * tile_size + tile_size / 2
+		
+		# Draw white background circle
+		draw_circle(Vector2(center_x, center_y), tile_size * 0.4, Color(1.0, 1.0, 1.0, 0.8))
+		
+		# Draw emoji based on type
+		var emoji = object_emojis.get(obj.type, "❓")
+		var text_size = font.get_string_size(emoji, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+		draw_string(font, Vector2(center_x - text_size.x / 2, center_y + text_size.y / 3), 
+					emoji, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.BLACK)
 
 func draw_interactable(interactable: Interactable):
 	var pos = Vector2(interactable.position.x * tile_size, interactable.position.y * tile_size)
@@ -405,21 +443,32 @@ func draw_interactable(interactable: Interactable):
 		var icon_pos = pos + Vector2(4, 4)
 		draw_rect(Rect2(icon_pos, Vector2(icon_size, icon_size)), Color(0.9, 0.9, 0.8))
 
+func is_object_consumed(object_id: String) -> bool:
+	"""Check if an object has been consumed/interacted with"""
+	return world_state.is_event_completed(object_id)
+
 func _on_interaction_requested(tile_pos: Vector2):
 	print("Interaction with tile: ", tile_pos)
 	
 	if tile_pos.x < 0 or tile_pos.y < 0:
 		return
 	
-	var tiles = current_map_data.get("tiles", [])
-	if tile_pos.y >= tiles.size() or tile_pos.x >= tiles[int(tile_pos.y)].size():
+	# First check for objects at this position (new system)
+	var obj = find_object_at(tile_pos)
+	if obj != null:
+		handle_object_interaction(obj)
 		return
 	
-	# Check for interactable at this position first
+	# Check for interactable at this position (containers/documents)
 	for interactable in interactables:
 		if interactable.position == tile_pos:
 			interact_with_object(interactable)
 			return
+	
+	# Then check tiles
+	var tiles = current_map_data.get("tiles", [])
+	if tile_pos.y >= tiles.size() or tile_pos.x >= tiles[int(tile_pos.y)].size():
+		return
 	
 	var tile_type = tiles[int(tile_pos.y)][int(tile_pos.x)]
 	
@@ -428,6 +477,200 @@ func _on_interaction_requested(tile_pos: Vector2):
 	elif tile_type == "stairs_up" or tile_type == "stairs_down":
 		use_stairs(tile_pos)
 
+# Object system functions (new)
+func find_object_at(tile_pos: Vector2):
+	"""Find an object at the given tile position"""
+	var objects = current_map_data.get("objects", [])
+	for obj in objects:
+		if obj.position.x == tile_pos.x and obj.position.y == tile_pos.y:
+			# Skip if already consumed
+			if is_object_consumed(obj.id):
+				continue
+			return obj
+	return null
+
+func handle_object_interaction(obj: Dictionary):
+	"""Handle interaction with an object based on its type"""
+	print("Interacting with object: ", obj.id, " (", obj.type, ")")
+	
+	match obj.type:
+		"item":
+			handle_item_pickup(obj)
+		"npc":
+			handle_npc_interaction(obj)
+		"battle_trigger":
+			handle_battle_trigger(obj)
+		"event":
+			handle_event_trigger(obj)
+		"examine":
+			handle_examine(obj)
+
+func handle_item_pickup(obj: Dictionary):
+	"""Handle picking up an item"""
+	var item_id = obj.get("item_id", "")
+	var amount = obj.get("amount", 1)
+	var examine_text = obj.get("examine_text", "")
+	
+	if item_id == "":
+		show_message("Error: Item has no item_id!")
+		return
+	
+	# Create the item
+	var item = ItemDatabase.create_item(item_id, amount)
+	if item == null:
+		show_message("Error: Item not found in database: " + item_id)
+		return
+	
+	# Try to add to inventory
+	if world_state.inventory.add_item(item):
+		var item_name = item.item_name
+		if amount > 1:
+			show_message("Picked up " + item_name + " x" + str(amount))
+		else:
+			show_message("Picked up " + item_name)
+		
+		# Mark as collected
+		world_state.complete_event(obj.id)
+		world_state.save_to_file()
+		queue_redraw()
+	else:
+		show_message("Inventory full! Cannot pick up " + item.item_name)
+
+func handle_npc_interaction(obj: Dictionary):
+	"""Handle talking to an NPC"""
+	var npc_name = obj.get("npc_name", "NPC")
+	var dialogue = obj.get("dialogue", "...")
+	var requires_item = obj.get("requires_item", "")
+	
+	# Check if requires an item
+	if requires_item != "":
+		if not world_state.inventory.has_item(requires_item):
+			show_message(npc_name + ": I need something from you first...", 4.0)
+			return
+	
+	# Show dialogue
+	show_message(npc_name + ": " + dialogue, 5.0)
+
+func handle_battle_trigger(obj: Dictionary):
+	"""Handle a battle trigger object"""
+	var battle_id = obj.get("battle_id", "battle_01_outbreak")
+	var once = obj.get("once", true)
+	
+	# Mark as triggered if one-time
+	if once:
+		world_state.complete_event(obj.id)
+		world_state.save_to_file()
+	
+	# Start the battle
+	show_message("Battle starting!", 1.0)
+	await get_tree().create_timer(1.0).timeout
+	transition_to_battle(battle_id)
+
+func handle_event_trigger(obj: Dictionary):
+	"""Handle a custom event trigger"""
+	var event_type = obj.get("event_type", "message")
+	var event_data = obj.get("event_data", {})
+	var once = obj.get("once", true)
+	
+	match event_type:
+		"message":
+			var message = event_data.get("message", "Something happened...")
+			show_message(message, 4.0)
+		
+		"give_item":
+			var item_id = event_data.get("item_id", "")
+			var amount = event_data.get("amount", 1)
+			if item_id != "":
+				var item = ItemDatabase.create_item(item_id, amount)
+				if item and world_state.inventory.add_item(item):
+					show_message("Received: " + item.item_name)
+		
+		"spawn_enemies":
+			show_message("Enemies are approaching!", 2.0)
+			# Could trigger a battle here
+		
+		"unlock_door":
+			var door_x = event_data.get("door_x", 0)
+			var door_y = event_data.get("door_y", 0)
+			var door_pos = Vector2(door_x, door_y)
+			world_state.mark_door_open(door_pos, true)
+			show_message("You hear a door unlock in the distance...")
+			create_collision()
+			queue_redraw()
+	
+	# Mark as triggered if one-time
+	if once:
+		world_state.complete_event(obj.id)
+		world_state.save_to_file()
+		queue_redraw()
+
+func handle_examine(obj: Dictionary):
+	"""Handle examining a point of interest"""
+	var examine_text = obj.get("examine_text", "Nothing special here.")
+	var detail_text = obj.get("detail_text", "")
+	
+	# Check if already examined once
+	if world_state.is_event_completed(obj.id + "_examined"):
+		if detail_text != "":
+			show_message(detail_text, 5.0)
+		else:
+			show_message(examine_text, 4.0)
+	else:
+		show_message(examine_text, 4.0)
+		world_state.complete_event(obj.id + "_examined")
+		world_state.save_to_file()
+
+# Interactable system functions (existing - containers/documents)
+func interact_with_object(interactable: Interactable):
+	print("Interacting with: ", interactable.name)
+	
+	# Mark as examined
+	if not interactable.is_examined:
+		interactable.examine()
+		show_message("Examined: " + interactable.name)
+	
+	# Show description
+	show_message(interactable.description, 4.0)
+	
+	# Handle container
+	if interactable.has_container and interactable.container_inventory:
+		# Show container UI
+		await get_tree().create_timer(0.5).timeout  # Brief delay after message
+		container_ui.initialize(world_state.inventory, interactable.container_inventory, interactable.name)
+		container_ui.visible = true
+	
+	# Handle document (after container is closed, or immediately if no container)
+	if interactable.has_document():
+		if interactable.has_container:
+			# Wait for container to close
+			await container_ui.container_closed
+		
+		# Show document
+		var doc_title = interactable.name
+		var doc_text = interactable.document_text
+		if doc_text != "":
+			document_ui.show_document(doc_title, doc_text)
+	
+	# Save state
+	world_state.save_interactable_state(interactable)
+	world_state.save_to_file()
+
+func _on_container_closed():
+	# Save all interactable states when container closes
+	for interactable in interactables:
+		world_state.save_interactable_state(interactable)
+	world_state.save_to_file()
+
+func _on_items_transferred():
+	# Auto-save when items are moved
+	for interactable in interactables:
+		world_state.save_interactable_state(interactable)
+	world_state.save_to_file()
+
+func _on_document_closed():
+	pass  # Nothing specific to do
+
+# Door functions
 func toggle_door(tile_pos: Vector2):
 	var is_open = world_state.is_door_open(tile_pos)
 	
@@ -516,55 +759,6 @@ func transition_to_map(target_map: String, target_position: Dictionary):
 			target_position.y * tile_size + tile_size / 2
 		)
 		player.position = world_state.player_position
-
-func interact_with_object(interactable: Interactable):
-	print("Interacting with: ", interactable.name)
-	
-	# Mark as examined
-	if not interactable.is_examined:
-		interactable.examine()
-		show_message("Examined: " + interactable.name)
-	
-	# Show description
-	show_message(interactable.description, 4.0)
-	
-	# Handle container
-	if interactable.has_container and interactable.container_inventory:
-		# Show container UI
-		await get_tree().create_timer(0.5).timeout  # Brief delay after message
-		container_ui.initialize(world_state.inventory, interactable.container_inventory, interactable.name)
-		container_ui.visible = true
-	
-	# Handle document (after container is closed, or immediately if no container)
-	if interactable.has_document():
-		if interactable.has_container:
-			# Wait for container to close
-			await container_ui.container_closed
-		
-		# Show document
-		var doc_title = interactable.name
-		var doc_text = interactable.document_text
-		if doc_text != "":
-			document_ui.show_document(doc_title, doc_text)
-	
-	# Save state
-	world_state.save_interactable_state(interactable)
-	world_state.save_to_file()
-
-func _on_container_closed():
-	# Save all interactable states when container closes
-	for interactable in interactables:
-		world_state.save_interactable_state(interactable)
-	world_state.save_to_file()
-
-func _on_items_transferred():
-	# Auto-save when items are moved
-	for interactable in interactables:
-		world_state.save_interactable_state(interactable)
-	world_state.save_to_file()
-
-func _on_document_closed():
-	pass  # Nothing specific to do
 
 func _on_battle_triggered():
 	print("Transitioning to battle...")

@@ -33,6 +33,7 @@ var ui_label: RichTextLabel
 var battle_label: Label
 var turn_label: Label
 var action_buttons: Control
+var battle_item_ui: Control
 var game_root: Node
 
 func _init():
@@ -192,9 +193,16 @@ func setup_ui(parent: Node):
 	var pass_button = Button.new()
 	pass_button.text = "Pass Turn"
 	pass_button.position = Vector2(0, 0)
-	pass_button.size = Vector2(230, 40)
+	pass_button.size = Vector2(110, 40)
 	pass_button.pressed.connect(_on_pass_button_pressed)
 	action_buttons.add_child(pass_button)
+	
+	var items_button = Button.new()
+	items_button.text = "Items"
+	items_button.position = Vector2(120, 0)
+	items_button.size = Vector2(110, 40)
+	items_button.pressed.connect(_on_items_button_pressed)
+	action_buttons.add_child(items_button)
 	
 	var end_turn_button = Button.new()
 	end_turn_button.text = "End Phase"
@@ -202,6 +210,8 @@ func setup_ui(parent: Node):
 	end_turn_button.size = Vector2(230, 40)
 	end_turn_button.pressed.connect(_on_end_turn_button_pressed)
 	action_buttons.add_child(end_turn_button)
+	
+	setup_battle_item_ui(parent)
 
 func show_phase_banner(is_player: bool, parent: Node):
 	var banner = parent.get_node_or_null("PhaseBanner")
@@ -458,6 +468,112 @@ func remove_unit(unit: Unit):
 	player_units.erase(unit)
 	enemy_units.erase(unit)
 	unit.queue_free()
+	
+func setup_battle_item_ui(parent: Node):
+	# Create canvas layer for item UI
+	var item_layer = CanvasLayer.new()
+	item_layer.name = "BattleItemLayer"
+	item_layer.layer = 100
+	parent.add_child(item_layer)
+	
+	battle_item_ui = preload("res://scripts/battle/BattleItemUI.gd").new()
+	battle_item_ui.item_selected.connect(_on_battle_item_selected)
+	battle_item_ui.ui_closed.connect(_on_battle_item_ui_closed)
+	item_layer.add_child(battle_item_ui)
+
+func _on_items_button_pressed():
+	if not grid.selected_unit:
+		return
+	
+	if not grid.selected_unit.can_attack():
+		return
+	
+	# Get world state inventory
+	var inventory = null
+	if has_node("/root/GameManager"):
+		# Try to access WorldState through saved file
+		var world_state = WorldState.new()
+		if world_state.load_from_file():
+			inventory = world_state.inventory
+	
+	if inventory:
+		battle_item_ui.show_for_unit(grid.selected_unit, inventory)
+	else:
+		print("No inventory available!")
+
+func _on_battle_item_selected(item: Item):
+	if not grid.selected_unit:
+		return
+	
+	# Apply item effect
+	use_item_on_unit(item, grid.selected_unit)
+
+func _on_battle_item_ui_closed():
+	pass  # Nothing to do
+
+func use_item_on_unit(item: Item, unit: Unit):
+	print("Using ", item.item_name, " on ", unit.unit_name)
+	
+	# Apply healing
+	if item.heal_amount > 0:
+		var old_health = unit.health
+		unit.health = min(unit.max_health, unit.health + item.heal_amount)
+		var healed = unit.health - old_health
+		
+		print("Healed ", unit.unit_name, " for ", healed, " HP")
+		
+		# Show heal effect (you could add visual feedback here)
+		show_heal_effect(unit, healed)
+	
+	# Remove/decrease item from inventory
+	var world_state = WorldState.new()
+	if world_state.load_from_file():
+		if item.stackable:
+			item.remove_from_stack(1)
+			if item.current_stack <= 0:
+				world_state.inventory.remove_item(item)
+		else:
+			world_state.inventory.remove_item(item)
+		
+		# Save updated inventory
+		world_state.save_to_file()
+	
+	# Mark unit as having attacked (using item counts as action)
+	unit.has_attacked = true
+	
+	# Update unit in roster
+	if unit.is_player:
+		update_player_roster(unit)
+	
+	# Auto-end turn if unit has both moved and used item
+	if unit.has_moved and unit.has_attacked:
+		unit.end_turn()
+	
+	# Update UI
+	update_unit_info(unit)
+	refresh_display()
+	
+	# Clear movement/attack ranges
+	grid.set_move_range([])
+	grid.set_attack_range([])
+
+func show_heal_effect(unit: Unit, amount: int):
+	# Create floating text showing heal amount
+	var heal_label = Label.new()
+	heal_label.text = "+" + str(amount)
+	heal_label.add_theme_font_size_override("font_size", 24)
+	heal_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
+	heal_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	heal_label.add_theme_constant_override("outline_size", 2)
+	heal_label.position = unit.position - Vector2(20, 40)
+	
+	game_root.add_child(heal_label)
+	
+	# Animate upward and fade out
+	var tween = game_root.create_tween()
+	tween.tween_property(heal_label, "position:y", heal_label.position.y - 30, 1.0)
+	tween.parallel().tween_property(heal_label, "modulate:a", 0.0, 1.0)
+	tween.tween_callback(heal_label.queue_free)
 	
 func check_all_player_units_acted():
 	if not turn_manager.is_player_turn():
