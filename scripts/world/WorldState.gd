@@ -6,6 +6,7 @@ var current_map_id: String = "facility_floor1"
 var player_position: Vector2 = Vector2.ZERO
 var door_states: Dictionary = {}
 var interactable_states: Dictionary = {}  # Track state of interactables by ID
+var explored_tiles: Dictionary = {}
 var collected_items: Array = []
 var killed_enemies: Array = []
 var completed_events: Array = []
@@ -23,6 +24,54 @@ static func key_to_vector(key: String) -> Vector2:
 	if parts.size() == 2:
 		return Vector2(float(parts[0]), float(parts[1]))
 	return Vector2.ZERO
+	
+func mark_tile_explored(map_id: String, position: Vector2):
+	var key = map_id + ":" + vector_to_key(position)
+	explored_tiles[key] = true
+
+func is_tile_explored(map_id: String, position: Vector2) -> bool:
+	var key = map_id + ":" + vector_to_key(position)
+	return explored_tiles.get(key, false)
+
+func explore_room(map_id: String, start_pos: Vector2, tiles: Array):
+	"""Flood fill to explore all connected floor tiles from start position"""
+	var to_explore = [start_pos]
+	var explored_set = {}
+	
+	while not to_explore.is_empty():
+		var pos = to_explore.pop_back()
+		var key = str(int(pos.x)) + "," + str(int(pos.y))
+		
+		# Skip if already explored in this flood fill
+		if explored_set.has(key):
+			continue
+		
+		# Check bounds
+		if pos.y < 0 or pos.y >= tiles.size():
+			continue
+		if pos.x < 0 or pos.x >= tiles[int(pos.y)].size():
+			continue
+		
+		var tile_type = tiles[int(pos.y)][int(pos.x)]
+		
+		# Skip walls
+		if tile_type == "wall":
+			continue
+		
+		# Skip closed doors (but mark the door itself as explored)
+		if tile_type == "door" and not is_door_open(pos):
+			mark_tile_explored(map_id, pos)
+			continue
+		
+		# Mark as explored
+		explored_set[key] = true
+		mark_tile_explored(map_id, pos)
+		
+		# Add neighbors
+		to_explore.append(pos + Vector2(1, 0))
+		to_explore.append(pos + Vector2(-1, 0))
+		to_explore.append(pos + Vector2(0, 1))
+		to_explore.append(pos + Vector2(0, -1))
 
 func to_dict() -> Dictionary:
 	return {
@@ -37,6 +86,7 @@ func to_dict() -> Dictionary:
 		"killed_enemies": killed_enemies,
 		"completed_events": completed_events,
 		"visited_maps": visited_maps,
+		"explored_tiles": explored_tiles,  # Add this
 		"inventory": inventory.to_dict()
 	}
 
@@ -52,6 +102,7 @@ func from_dict(data: Dictionary):
 	killed_enemies = data.get("killed_enemies", [])
 	completed_events = data.get("completed_events", [])
 	visited_maps = data.get("visited_maps", [])
+	explored_tiles = data.get("explored_tiles", {})  # Add this
 	
 	# Load inventory
 	if data.has("inventory"):

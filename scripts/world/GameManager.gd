@@ -1,18 +1,19 @@
 extends Node
 
 var player_roster: Array = []
-var current_world_map: String = "facility_floor1"  # Changed
-var world_position: Vector2 = Vector2.ZERO  # Changed
+var current_world_map: String = "facility_floor1"
+var world_position: Vector2 = Vector2.ZERO
 var pending_battle_id: String = ""
-var return_to_world_after_battle: bool = false  # Changed
+var return_to_world_after_battle: bool = false
+var world_state: WorldState = null
 
 func _ready():
-	# Initialize player roster
 	PlayerRoster.load_roster()
+	world_state = WorldState.new()
 
 func start_battle(battle_id: String):
 	pending_battle_id = battle_id
-	return_to_world_after_battle = true  # Changed
+	return_to_world_after_battle = true
 	print("GameManager: Starting battle ", battle_id)
 	call_deferred("change_to_battle")
 

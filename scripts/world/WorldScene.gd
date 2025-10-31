@@ -40,7 +40,11 @@ func _ready():
 	ItemDatabase.load_items()
 	
 	# Initialize world state
-	world_state = WorldState.new()
+	if has_node("/root/GameManager"):
+		var gm = get_node("/root/GameManager")
+		world_state = gm.world_state
+	else:
+		world_state = WorldState.new()
 	
 	# Setup UI
 	setup_message_ui()
@@ -220,6 +224,12 @@ func load_map(map_id: String, preserve_state: bool = false):
 		for door in doors:
 			var pos = Vector2(door.position.x, door.position.y)
 			world_state.mark_door_open(pos, door.get("is_open", false))
+		
+		# Explore starting room (from spawn point)
+		var spawn = current_map_data.get("spawn_point", {"x": 2, "y": 10})
+		var spawn_pos = Vector2(spawn.x, spawn.y)
+		var tiles = current_map_data.get("tiles", [])
+		world_state.explore_room(map_id, spawn_pos, tiles)
 	else:
 		print("Preserving loaded door states")
 		var doors = current_map_data.get("doors", [])
@@ -239,7 +249,7 @@ func load_map(map_id: String, preserve_state: bool = false):
 	print("Loaded map: ", current_map_data.get("name", "Unknown"))
 	print("Door states: ", world_state.door_states)
 	queue_redraw()
-
+	
 func create_collision():
 	for collision_body in collision_tiles:
 		collision_body.queue_free()
@@ -332,8 +342,16 @@ func _draw():
 	for y in range(tiles.size()):
 		var row = tiles[y]
 		for x in range(row.size()):
-			var tile_type = row[x]
 			var tile_pos = Vector2(x, y)
+			
+			# Only draw explored tiles
+			if not world_state.is_tile_explored(world_state.current_map_id, tile_pos):
+				# Draw black/dark fog
+				var rect = Rect2(x * tile_size, y * tile_size, tile_size, tile_size)
+				draw_rect(rect, Color(0.05, 0.05, 0.05))
+				continue
+			
+			var tile_type = row[x]
 			
 			if tile_type == "door" and world_state.is_door_open(tile_pos):
 				tile_type = "door_open"
@@ -380,11 +398,12 @@ func _draw():
 			# Grid lines
 			draw_rect(rect, Color(0.1, 0.1, 0.1), false, 1.0)
 	
-	# Draw interactables (containers/documents)
+	# Only draw interactables and objects if their tiles are explored
 	for interactable in interactables:
-		draw_interactable(interactable)
+		if world_state.is_tile_explored(world_state.current_map_id, interactable.position):
+			draw_interactable(interactable)
 	
-	# Draw objects (new system)
+	# Draw objects (new system) - only if explored
 	var objects = current_map_data.get("objects", [])
 	var font = ThemeDB.fallback_font
 	var font_size = 20
@@ -392,6 +411,11 @@ func _draw():
 	for obj in objects:
 		# Skip if object has been collected/interacted with
 		if is_object_consumed(obj.id):
+			continue
+		
+		# Skip if not explored
+		var obj_pos = Vector2(obj.position.x, obj.position.y)
+		if not world_state.is_tile_explored(world_state.current_map_id, obj_pos):
 			continue
 		
 		var pos = obj.position
@@ -672,33 +696,21 @@ func _on_document_closed():
 
 # Door functions
 func toggle_door(tile_pos: Vector2):
-	var is_open = world_state.is_door_open(tile_pos)
-	
-	if is_open:
-		# Close door
-		world_state.mark_door_open(tile_pos, false)
-		show_message("Door closed.")
-		create_collision()
-		queue_redraw()
-		return
-	
-	# Try to open door - check if locked
 	var door_data = get_door_data(tile_pos)
-	if door_data == null:
-		# No door data, just open it
-		world_state.mark_door_open(tile_pos, true)
-		show_message("Door opened.")
-		create_collision()
-		queue_redraw()
-		return
-	
 	var required_key = door_data.get("required_key", "")
-	var lock_hint = door_data.get("lock_hint", "This door is locked.")
 	
 	if required_key == "":
 		# No key required, open it
 		world_state.mark_door_open(tile_pos, true)
 		show_message("Door opened.")
+		
+		# Explore the newly accessible area on BOTH sides of the door
+		var tiles = current_map_data.get("tiles", [])
+		var directions = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
+		for dir in directions:
+			var explore_pos = tile_pos + dir
+			world_state.explore_room(world_state.current_map_id, explore_pos, tiles)
+		
 		create_collision()
 		queue_redraw()
 		return
@@ -709,10 +721,19 @@ func toggle_door(tile_pos: Vector2):
 		world_state.mark_door_open(tile_pos, true)
 		var key_name = get_key_name(required_key)
 		show_message("Used the " + key_name + ".")
+		
+		# Explore the newly accessible area on BOTH sides of the door
+		var tiles = current_map_data.get("tiles", [])
+		var directions = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
+		for dir in directions:
+			var explore_pos = tile_pos + dir
+			world_state.explore_room(world_state.current_map_id, explore_pos, tiles)
+		
 		create_collision()
 		queue_redraw()
 	else:
 		# Player doesn't have the key
+		var lock_hint = door_data.get("lock_hint", "")
 		show_message(lock_hint, 4.0)
 
 func get_door_data(tile_pos: Vector2) -> Dictionary:
@@ -759,6 +780,12 @@ func transition_to_map(target_map: String, target_position: Dictionary):
 			target_position.y * tile_size + tile_size / 2
 		)
 		player.position = world_state.player_position
+		
+		# Explore the destination room after transitioning
+		var target_pos = Vector2(target_position.x, target_position.y)
+		var tiles = current_map_data.get("tiles", [])
+		world_state.explore_room(target_map, target_pos, tiles)
+		queue_redraw()  # Redraw to show the newly explored area
 
 func _on_battle_triggered():
 	print("Transitioning to battle...")

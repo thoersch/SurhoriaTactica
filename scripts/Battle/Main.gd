@@ -12,6 +12,9 @@ func _ready():
 	game_state.battle_lost.connect(_on_battle_lost)
 
 func _input(event):
+	if game_state.battle_item_ui and game_state.battle_item_ui.visible:
+		return
+		
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		game_state.handle_mouse_click(get_global_mouse_position())
 	elif event is InputEventMouseMotion:

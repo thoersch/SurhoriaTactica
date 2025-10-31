@@ -483,18 +483,32 @@ func setup_battle_item_ui(parent: Node):
 
 func _on_items_button_pressed():
 	if not grid.selected_unit:
+		print("DEBUG: No selected unit")
 		return
 	
 	if not grid.selected_unit.can_attack():
+		print("DEBUG: Unit can't attack")
 		return
 	
-	# Get world state inventory
+	# Get inventory from GameManager's world_state
 	var inventory = null
-	if has_node("/root/GameManager"):
-		# Try to access WorldState through saved file
-		var world_state = WorldState.new()
-		if world_state.load_from_file():
-			inventory = world_state.inventory
+	print("DEBUG: Checking for GameManager...")
+	
+	# Use game_root to access the scene tree
+	if game_root and game_root.has_node("/root/GameManager"):
+		print("DEBUG: GameManager found")
+		var game_manager = game_root.get_node("/root/GameManager")
+		print("DEBUG: game_manager = ", game_manager)
+		print("DEBUG: game_manager.world_state = ", game_manager.world_state)
+		
+		if game_manager.world_state:
+			print("DEBUG: world_state is not null")
+			inventory = game_manager.world_state.inventory
+			print("DEBUG: inventory = ", inventory)
+			if inventory:
+				print("DEBUG: inventory.items.size() = ", inventory.items.size())
+	else:
+		print("DEBUG: GameManager NOT found or game_root is null")
 	
 	if inventory:
 		battle_item_ui.show_for_unit(grid.selected_unit, inventory)
@@ -514,6 +528,11 @@ func _on_battle_item_ui_closed():
 func use_item_on_unit(item: Item, unit: Unit):
 	print("Using ", item.item_name, " on ", unit.unit_name)
 	
+	# Check if item has any uses left
+	if item.stackable and item.current_stack <= 0:
+		print("Item has no uses left!")
+		return
+	
 	# Apply healing
 	if item.heal_amount > 0:
 		var old_health = unit.health
@@ -525,18 +544,22 @@ func use_item_on_unit(item: Item, unit: Unit):
 		# Show heal effect (you could add visual feedback here)
 		show_heal_effect(unit, healed)
 	
-	# Remove/decrease item from inventory
-	var world_state = WorldState.new()
-	if world_state.load_from_file():
-		if item.stackable:
-			item.remove_from_stack(1)
-			if item.current_stack <= 0:
-				world_state.inventory.remove_item(item)
-		else:
-			world_state.inventory.remove_item(item)
-		
-		# Save updated inventory
-		world_state.save_to_file()
+	# Remove/decrease item from inventory using GameManager's world_state
+	if game_root and game_root.has_node("/root/GameManager"):
+		var game_manager = game_root.get_node("/root/GameManager")
+		if game_manager.world_state:
+			if item.stackable:
+				item.current_stack -= 1
+				if item.current_stack <= 0:
+					game_manager.world_state.inventory.remove_item(item)
+			else:
+				game_manager.world_state.inventory.remove_item(item)
+			
+			# Save updated inventory
+			game_manager.world_state.save_to_file()
+			
+			# Refresh the item UI to show updated counts
+			battle_item_ui.refresh_items()
 	
 	# Mark unit as having attacked (using item counts as action)
 	unit.has_attacked = true
