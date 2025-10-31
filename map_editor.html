@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Surhoria Tactica - Map Editor</title>
+    <title>Surhoria Tactica - Enhanced Map Editor</title>
     <style>
         * {
             margin: 0;
@@ -83,7 +83,8 @@
 
         input[type="text"],
         input[type="number"],
-        select {
+        select,
+        textarea {
             width: 100%;
             padding: 8px;
             background: #1a1a1a;
@@ -94,9 +95,16 @@
             font-size: 13px;
         }
 
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
         input[type="text"]:focus,
         input[type="number"]:focus,
-        select:focus {
+        select:focus,
+        textarea:focus {
             outline: none;
             border-color: #4a9eff;
         }
@@ -118,6 +126,14 @@
 
         button:active {
             background: #2a7edf;
+        }
+
+        button.danger {
+            background: #e63946;
+        }
+
+        button.danger:hover {
+            background: #d62839;
         }
 
         .tile-palette {
@@ -195,8 +211,8 @@
             background: #252525;
             padding: 30px;
             border-radius: 8px;
-            max-width: 600px;
-            max-height: 80vh;
+            max-width: 700px;
+            max-height: 85vh;
             overflow-y: auto;
             border: 2px solid #444;
         }
@@ -210,7 +226,7 @@
 
         .list-item {
             background: #1a1a1a;
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 8px;
             border-radius: 4px;
             border: 1px solid #444;
@@ -219,22 +235,14 @@
             align-items: center;
         }
 
-        .list-item button {
-            padding: 4px 8px;
-            font-size: 11px;
+        .list-item-content {
+            flex: 1;
         }
 
-        textarea {
-            width: 100%;
-            height: 300px;
-            background: #1a1a1a;
-            border: 1px solid #444;
-            color: #e0e0e0;
-            padding: 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            border-radius: 4px;
-            resize: vertical;
+        .list-item button {
+            padding: 4px 12px;
+            font-size: 11px;
+            margin-left: 8px;
         }
 
         .error {
@@ -249,15 +257,17 @@
             margin-top: 5px;
         }
 
-        .door-indicator {
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .object-marker {
             position: absolute;
             pointer-events: none;
-            font-size: 10px;
-            background: rgba(139, 69, 19, 0.9);
-            color: white;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-weight: bold;
+            font-size: 16px;
+            text-align: center;
         }
     </style>
 </head>
@@ -292,18 +302,19 @@
             <button onclick="setTool('paint')">Paint</button>
             <button onclick="setTool('fill')">Fill</button>
             <button onclick="setTool('spawn')">Set Spawn</button>
-            <button onclick="setTool('stairs')">Add Stairs</button>
+            <button onclick="setTool('object')">Place Object</button>
             <button onclick="setTool('zone')">Add Zone</button>
         </div>
         
         <div class="info-text" style="margin-top: 10px;">
-            ðŸ’¡ Tip: After painting a door tile, click on it to configure locks!
+            💡 Tip: Click on doors or objects to configure them!
         </div>
 
         <h3>Special Elements</h3>
         <div class="section">
             <button onclick="showTransitionsModal()">Manage Transitions</button>
             <button onclick="showZonesModal()">Manage Zones</button>
+            <button onclick="showObjectsModal()">Manage Objects</button>
         </div>
 
         <h3>File Operations</h3>
@@ -311,7 +322,7 @@
             <button onclick="showImportModal()">Import JSON</button>
             <button onclick="exportMap()">Export JSON</button>
             <button onclick="downloadMap()">Download JSON</button>
-            <button onclick="clearMap()">Clear Map</button>
+            <button class="danger" onclick="clearMap()">Clear Map</button>
         </div>
     </div>
 
@@ -333,7 +344,7 @@
     <div id="import-modal" class="modal">
         <div class="modal-content">
             <h2>Import Map JSON</h2>
-            <textarea id="import-json" placeholder="Paste your map JSON here..."></textarea>
+            <textarea id="import-json" placeholder="Paste your map JSON here..." style="height: 400px; font-family: monospace;"></textarea>
             <div id="import-message"></div>
             <div class="modal-buttons">
                 <button onclick="closeImportModal()">Cancel</button>
@@ -346,7 +357,7 @@
     <div id="export-modal" class="modal">
         <div class="modal-content">
             <h2>Export Map JSON</h2>
-            <textarea id="export-json" readonly></textarea>
+            <textarea id="export-json" readonly style="height: 400px; font-family: monospace;"></textarea>
             <div class="modal-buttons">
                 <button onclick="copyToClipboard()">Copy to Clipboard</button>
                 <button onclick="closeExportModal()">Close</button>
@@ -382,6 +393,45 @@
                 <button onclick="saveDoorConfig()">Save</button>
                 <button onclick="removeDoorConfig()">Remove Door Tile</button>
                 <button onclick="closeDoorConfigModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Object Configuration Modal -->
+    <div id="object-config-modal" class="modal">
+        <div class="modal-content">
+            <h2>Configure Object</h2>
+            <p class="info-text">Position: <strong id="object-config-pos"></strong></p>
+            
+            <label>Object Type:</label>
+            <select id="object-type">
+                <option value="item">Item Pickup</option>
+                <option value="npc">NPC</option>
+                <option value="battle_trigger">Battle Trigger</option>
+                <option value="event">Event Trigger</option>
+                <option value="examine">Examine Point</option>
+            </select>
+            
+            <div id="object-config-fields">
+                <!-- Dynamic fields will be added here based on object type -->
+            </div>
+            
+            <div class="modal-buttons">
+                <button onclick="saveObjectConfig()">Save</button>
+                <button onclick="removeObjectConfig()">Remove Object</button>
+                <button onclick="closeObjectConfigModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Objects List Modal -->
+    <div id="objects-modal" class="modal">
+        <div class="modal-content">
+            <h2>Manage Objects</h2>
+            <p class="info-text">Click on objects on the map to edit them, or use the list below.</p>
+            <div id="objects-list"></div>
+            <div class="modal-buttons">
+                <button onclick="closeObjectsModal()">Close</button>
             </div>
         </div>
     </div>
@@ -455,6 +505,14 @@
             'window': { color: '#6AB0FF', name: 'Window' }
         };
 
+        const OBJECT_EMOJIS = {
+            'item': '📦',
+            'npc': '👤',
+            'battle_trigger': '⚔️',
+            'event': '⭐',
+            'examine': '🔍'
+        };
+
         let mapData = {
             id: 'new_map',
             name: 'New Map',
@@ -465,6 +523,7 @@
             tiles: [],
             transitions: [],
             doors: [],
+            objects: [],  // New: array of interactable objects
             encounter_zones: []
         };
 
@@ -475,6 +534,8 @@
         let isInitialClick = false;
         let zoneStart = null;
         let currentDoorConfigPos = null;
+        let currentObjectConfigPos = null;
+        let currentObjectConfigIndex = -1;
 
         window.onload = function() {
             canvas = document.getElementById('map-canvas');
@@ -512,7 +573,14 @@
 
         function setTool(tool) {
             currentTool = tool;
-            document.getElementById('current-tool').textContent = tool.charAt(0).toUpperCase() + tool.slice(1);
+            const toolNames = {
+                'paint': 'Paint',
+                'fill': 'Fill',
+                'spawn': 'Set Spawn',
+                'object': 'Place Object',
+                'zone': 'Add Zone'
+            };
+            document.getElementById('current-tool').textContent = toolNames[tool];
             
             if (tool === 'zone') {
                 zoneStart = null;
@@ -560,11 +628,15 @@
             mapData.width = newWidth;
             mapData.height = newHeight;
             
-            // Remove doors that are now out of bounds or not on door tiles
+            // Remove elements that are now out of bounds
             mapData.doors = mapData.doors.filter(door => {
                 const x = door.position.x;
                 const y = door.position.y;
                 return x < newWidth && y < newHeight && mapData.tiles[y][x] === 'door';
+            });
+            
+            mapData.objects = mapData.objects.filter(obj => {
+                return obj.position.x < newWidth && obj.position.y < newHeight;
             });
             
             canvas.width = newWidth * newTileSize;
@@ -581,6 +653,9 @@
             
             document.getElementById('map-id').addEventListener('input', (e) => mapData.id = e.target.value);
             document.getElementById('map-name').addEventListener('input', (e) => mapData.name = e.target.value);
+            
+            // Object type change handler
+            document.getElementById('object-type').addEventListener('change', updateObjectConfigFields);
         }
 
         function handleMouseDown(e) {
@@ -596,13 +671,11 @@
             
             document.getElementById('coordinates').textContent = `x: ${x}, y: ${y}`;
             
-            // If mouse button is down and we've moved, we're dragging
             if (isInitialClick) {
                 isDragging = true;
                 isInitialClick = false;
             }
             
-            // Only allow drag-painting for non-door tiles
             if (isDragging && currentTool === 'paint' && selectedTile !== 'door') {
                 handleCanvasClick(e);
             }
@@ -624,29 +697,30 @@
                 case 'paint':
                     const oldTile = mapData.tiles[y][x];
                     
-                    // Check if clicking on an existing door
-                    if (oldTile === 'door' && !isDragging) {
-                        // Open door config instead of painting over it
-                        openDoorConfig(x, y);
-                        return;
+                    // Check if clicking on an existing door or object
+                    if (!isDragging) {
+                        if (oldTile === 'door') {
+                            openDoorConfig(x, y);
+                            return;
+                        }
+                        
+                        const objIndex = findObjectAt(x, y);
+                        if (objIndex >= 0) {
+                            openObjectConfig(x, y, objIndex);
+                            return;
+                        }
                     }
                     
-                    // Don't allow painting doors while dragging
                     if (selectedTile === 'door' && isDragging) {
                         return;
                     }
                     
                     mapData.tiles[y][x] = selectedTile;
                     
-                    // If we painted over a door or painted away from a door, update door data
                     if (oldTile === 'door' && selectedTile !== 'door') {
-                        // Removed a door tile, remove its config
                         removeDoorAt(x, y);
                     } else if (selectedTile === 'door' && oldTile !== 'door') {
-                        // Painted a new door, create default config
                         ensureDoorConfig(x, y);
-                        
-                        // Open config for the new door
                         if (!isDragging) {
                             openDoorConfig(x, y);
                         }
@@ -663,6 +737,17 @@
                 case 'spawn':
                     mapData.spawn_point = { x, y };
                     render();
+                    break;
+                    
+                case 'object':
+                    // Check if clicking existing object
+                    const existingObjIndex = findObjectAt(x, y);
+                    if (existingObjIndex >= 0) {
+                        openObjectConfig(x, y, existingObjIndex);
+                    } else {
+                        // Create new object
+                        openObjectConfig(x, y, -1);
+                    }
                     break;
                     
                 case 'zone':
@@ -686,8 +771,18 @@
             }
         }
 
+        function findObjectAt(x, y) {
+            for (let i = 0; i < mapData.objects.length; i++) {
+                const obj = mapData.objects[i];
+                if (obj.position.x === x && obj.position.y === y) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        // Door functions
         function ensureDoorConfig(x, y) {
-            // Check if door config already exists
             const exists = mapData.doors.some(door => 
                 door.position.x === x && door.position.y === y
             );
@@ -709,12 +804,10 @@
         function openDoorConfig(x, y) {
             currentDoorConfigPos = { x, y };
             
-            // Find existing door config
             const doorConfig = mapData.doors.find(door => 
                 door.position.x === x && door.position.y === y
             );
             
-            // Populate modal
             document.getElementById('door-config-pos').textContent = `(${x}, ${y})`;
             
             if (doorConfig) {
@@ -722,7 +815,6 @@
                 document.getElementById('door-config-key').value = doorConfig.required_key || '';
                 document.getElementById('door-config-hint').value = doorConfig.lock_hint || '';
             } else {
-                // Default values
                 document.getElementById('door-config-open').value = 'false';
                 document.getElementById('door-config-key').value = '';
                 document.getElementById('door-config-hint').value = '';
@@ -737,10 +829,8 @@
             const x = currentDoorConfigPos.x;
             const y = currentDoorConfigPos.y;
             
-            // Remove old config if exists
             removeDoorAt(x, y);
             
-            // Create new config
             const doorConfig = {
                 position: { x, y },
                 is_open: document.getElementById('door-config-open').value === 'true'
@@ -763,10 +853,7 @@
         function removeDoorConfig() {
             if (!currentDoorConfigPos) return;
             
-            // Remove the door tile
             mapData.tiles[currentDoorConfigPos.y][currentDoorConfigPos.x] = 'floor';
-            
-            // Remove the door config
             removeDoorAt(currentDoorConfigPos.x, currentDoorConfigPos.y);
             
             closeDoorConfigModal();
@@ -776,6 +863,291 @@
         function closeDoorConfigModal() {
             document.getElementById('door-config-modal').style.display = 'none';
             currentDoorConfigPos = null;
+        }
+
+        // Object configuration functions
+        function openObjectConfig(x, y, index) {
+            currentObjectConfigPos = { x, y };
+            currentObjectConfigIndex = index;
+            
+            document.getElementById('object-config-pos').textContent = `(${x}, ${y})`;
+            
+            if (index >= 0) {
+                // Editing existing object
+                const obj = mapData.objects[index];
+                document.getElementById('object-type').value = obj.type;
+                updateObjectConfigFields();
+                populateObjectFields(obj);
+            } else {
+                // New object
+                document.getElementById('object-type').value = 'item';
+                updateObjectConfigFields();
+            }
+            
+            document.getElementById('object-config-modal').style.display = 'flex';
+        }
+
+        function updateObjectConfigFields() {
+            const type = document.getElementById('object-type').value;
+            const fieldsContainer = document.getElementById('object-config-fields');
+            fieldsContainer.innerHTML = '';
+            
+            const commonFields = `
+                <label>Object ID (unique identifier):</label>
+                <input type="text" id="object-id" placeholder="item_001 or npc_guard">
+            `;
+            
+            fieldsContainer.innerHTML = commonFields;
+            
+            switch(type) {
+                case 'item':
+                    fieldsContainer.innerHTML += `
+                        <label>Item ID (from items.json):</label>
+                        <input type="text" id="object-item-id" placeholder="key_crane, health_herb, etc.">
+                        
+                        <label>Amount (for stackable items):</label>
+                        <input type="number" id="object-amount" value="1" min="1">
+                        
+                        <label>Examine Text (when player looks at it):</label>
+                        <textarea id="object-examine" placeholder="There's a small key on the ground."></textarea>
+                    `;
+                    break;
+                    
+                case 'npc':
+                    fieldsContainer.innerHTML += `
+                        <label>NPC Name:</label>
+                        <input type="text" id="object-npc-name" placeholder="Guard">
+                        
+                        <label>Dialogue Text:</label>
+                        <textarea id="object-dialogue" placeholder="Hello there! Be careful ahead."></textarea>
+                        
+                        <label>Requires Item (optional - item_id needed to talk):</label>
+                        <input type="text" id="object-requires" placeholder="key_master">
+                    `;
+                    break;
+                    
+                case 'battle_trigger':
+                    fieldsContainer.innerHTML += `
+                        <label>Battle ID:</label>
+                        <input type="text" id="object-battle-id" placeholder="battle_01_outbreak">
+                        
+                        <label>One-Time Only:</label>
+                        <select id="object-once">
+                            <option value="true">Yes - Trigger once then remove</option>
+                            <option value="false">No - Can trigger multiple times</option>
+                        </select>
+                    `;
+                    break;
+                    
+                case 'event':
+                    fieldsContainer.innerHTML += `
+                        <label>Event Type:</label>
+                        <select id="object-event-type">
+                            <option value="message">Show Message</option>
+                            <option value="give_item">Give Item</option>
+                            <option value="spawn_enemies">Spawn Enemies</option>
+                            <option value="unlock_door">Unlock Door</option>
+                        </select>
+                        
+                        <label>Event Data (JSON format):</label>
+                        <textarea id="object-event-data" placeholder='{"message": "You hear a strange noise..."}'></textarea>
+                        
+                        <label>One-Time Only:</label>
+                        <select id="object-once">
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                        </select>
+                    `;
+                    break;
+                    
+                case 'examine':
+                    fieldsContainer.innerHTML += `
+                        <label>Examine Text:</label>
+                        <textarea id="object-examine" placeholder="It's an old painting on the wall."></textarea>
+                        
+                        <label>Detailed Description (on second examination):</label>
+                        <textarea id="object-detail" placeholder="Looking closer, you notice a hidden compartment..."></textarea>
+                    `;
+                    break;
+            }
+        }
+
+        function populateObjectFields(obj) {
+            document.getElementById('object-id').value = obj.id || '';
+            
+            switch(obj.type) {
+                case 'item':
+                    if (document.getElementById('object-item-id')) {
+                        document.getElementById('object-item-id').value = obj.item_id || '';
+                        document.getElementById('object-amount').value = obj.amount || 1;
+                        document.getElementById('object-examine').value = obj.examine_text || '';
+                    }
+                    break;
+                    
+                case 'npc':
+                    if (document.getElementById('object-npc-name')) {
+                        document.getElementById('object-npc-name').value = obj.npc_name || '';
+                        document.getElementById('object-dialogue').value = obj.dialogue || '';
+                        document.getElementById('object-requires').value = obj.requires_item || '';
+                    }
+                    break;
+                    
+                case 'battle_trigger':
+                    if (document.getElementById('object-battle-id')) {
+                        document.getElementById('object-battle-id').value = obj.battle_id || '';
+                        document.getElementById('object-once').value = obj.once ? 'true' : 'false';
+                    }
+                    break;
+                    
+                case 'event':
+                    if (document.getElementById('object-event-type')) {
+                        document.getElementById('object-event-type').value = obj.event_type || 'message';
+                        document.getElementById('object-event-data').value = JSON.stringify(obj.event_data || {}, null, 2);
+                        document.getElementById('object-once').value = obj.once ? 'true' : 'false';
+                    }
+                    break;
+                    
+                case 'examine':
+                    if (document.getElementById('object-examine')) {
+                        document.getElementById('object-examine').value = obj.examine_text || '';
+                        document.getElementById('object-detail').value = obj.detail_text || '';
+                    }
+                    break;
+            }
+        }
+
+        function saveObjectConfig() {
+            if (!currentObjectConfigPos) return;
+            
+            const type = document.getElementById('object-type').value;
+            const id = document.getElementById('object-id').value;
+            
+            if (!id) {
+                alert('Object ID is required!');
+                return;
+            }
+            
+            const obj = {
+                id: id,
+                type: type,
+                position: {
+                    x: currentObjectConfigPos.x,
+                    y: currentObjectConfigPos.y
+                }
+            };
+            
+            // Add type-specific data
+            switch(type) {
+                case 'item':
+                    obj.item_id = document.getElementById('object-item-id').value;
+                    obj.amount = parseInt(document.getElementById('object-amount').value) || 1;
+                    obj.examine_text = document.getElementById('object-examine').value;
+                    break;
+                    
+                case 'npc':
+                    obj.npc_name = document.getElementById('object-npc-name').value;
+                    obj.dialogue = document.getElementById('object-dialogue').value;
+                    obj.requires_item = document.getElementById('object-requires').value;
+                    break;
+                    
+                case 'battle_trigger':
+                    obj.battle_id = document.getElementById('object-battle-id').value;
+                    obj.once = document.getElementById('object-once').value === 'true';
+                    break;
+                    
+                case 'event':
+                    obj.event_type = document.getElementById('object-event-type').value;
+                    try {
+                        obj.event_data = JSON.parse(document.getElementById('object-event-data').value);
+                    } catch (e) {
+                        alert('Invalid JSON in event data!');
+                        return;
+                    }
+                    obj.once = document.getElementById('object-once').value === 'true';
+                    break;
+                    
+                case 'examine':
+                    obj.examine_text = document.getElementById('object-examine').value;
+                    obj.detail_text = document.getElementById('object-detail').value;
+                    break;
+            }
+            
+            // Remove any existing object at this position
+            mapData.objects = mapData.objects.filter((o, i) => 
+                !(o.position.x === obj.position.x && o.position.y === obj.position.y)
+            );
+            
+            // Add the object
+            mapData.objects.push(obj);
+            
+            closeObjectConfigModal();
+            render();
+        }
+
+        function removeObjectConfig() {
+            if (currentObjectConfigIndex >= 0) {
+                mapData.objects.splice(currentObjectConfigIndex, 1);
+            } else if (currentObjectConfigPos) {
+                mapData.objects = mapData.objects.filter(obj => 
+                    !(obj.position.x === currentObjectConfigPos.x && 
+                      obj.position.y === currentObjectConfigPos.y)
+                );
+            }
+            
+            closeObjectConfigModal();
+            render();
+        }
+
+        function closeObjectConfigModal() {
+            document.getElementById('object-config-modal').style.display = 'none';
+            currentObjectConfigPos = null;
+            currentObjectConfigIndex = -1;
+        }
+
+        // Objects list modal
+        function showObjectsModal() {
+            updateObjectsList();
+            document.getElementById('objects-modal').style.display = 'flex';
+        }
+
+        function closeObjectsModal() {
+            document.getElementById('objects-modal').style.display = 'none';
+        }
+
+        function updateObjectsList() {
+            const list = document.getElementById('objects-list');
+            list.innerHTML = '';
+            
+            if (mapData.objects.length === 0) {
+                list.innerHTML = '<p class="info-text">No objects placed. Use the Place Object tool to add them.</p>';
+                return;
+            }
+            
+            mapData.objects.forEach((obj, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                const emoji = OBJECT_EMOJIS[obj.type] || '❓';
+                item.innerHTML = `
+                    <div class="list-item-content">
+                        <strong>${emoji} ${obj.id}</strong> (${obj.type})<br>
+                        <small>Position: (${obj.position.x}, ${obj.position.y})</small>
+                    </div>
+                    <button onclick="editObjectFromList(${index})">Edit</button>
+                    <button onclick="removeObjectFromList(${index})">Remove</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function editObjectFromList(index) {
+            const obj = mapData.objects[index];
+            openObjectConfig(obj.position.x, obj.position.y, index);
+        }
+
+        function removeObjectFromList(index) {
+            mapData.objects.splice(index, 1);
+            updateObjectsList();
+            render();
         }
 
         function floodFill(x, y, targetType, replacementType) {
@@ -816,7 +1188,6 @@
                         mapData.tile_size
                     );
                     
-                    // Draw grid lines
                     ctx.strokeStyle = '#1a1a1a';
                     ctx.lineWidth = 1;
                     ctx.strokeRect(
@@ -826,7 +1197,7 @@
                         mapData.tile_size
                     );
                     
-                    // Draw lock indicator on doors with keys
+                    // Draw lock on doors with keys
                     if (tileType === 'door') {
                         const doorConfig = mapData.doors.find(d => 
                             d.position.x === x && d.position.y === y
@@ -837,7 +1208,7 @@
                             ctx.font = 'bold 16px Arial';
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
-                            ctx.fillText('ðŸ”’', 
+                            ctx.fillText('🔒', 
                                 x * mapData.tile_size + mapData.tile_size / 2,
                                 y * mapData.tile_size + mapData.tile_size / 2
                             );
@@ -858,6 +1229,26 @@
             );
             ctx.fill();
             
+            // Draw objects
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            for (const obj of mapData.objects) {
+                const emoji = OBJECT_EMOJIS[obj.type] || '❓';
+                const centerX = obj.position.x * mapData.tile_size + mapData.tile_size / 2;
+                const centerY = obj.position.y * mapData.tile_size + mapData.tile_size / 2;
+                
+                // Draw background circle
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, mapData.tile_size * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw emoji
+                ctx.fillText(emoji, centerX, centerY);
+            }
+            
             // Draw encounter zones
             ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
             ctx.lineWidth = 2;
@@ -876,12 +1267,13 @@
                 initializeMap();
                 mapData.transitions = [];
                 mapData.doors = [];
+                mapData.objects = [];
                 mapData.encounter_zones = [];
                 render();
             }
         }
 
-        // Modal functions
+        // Import/Export functions
         function showImportModal() {
             document.getElementById('import-modal').style.display = 'flex';
         }
@@ -913,6 +1305,7 @@
                 mapData.spawn_point = mapData.spawn_point || { x: 0, y: 0 };
                 mapData.transitions = mapData.transitions || [];
                 mapData.doors = mapData.doors || [];
+                mapData.objects = mapData.objects || [];
                 mapData.encounter_zones = mapData.encounter_zones || [];
                 
                 canvas.width = mapData.width * mapData.tile_size;
@@ -928,7 +1321,7 @@
         }
 
         function exportMap() {
-            // Clean up doors - only keep doors that have door tiles
+            // Clean up before export
             mapData.doors = mapData.doors.filter(door => {
                 const x = door.position.x;
                 const y = door.position.y;
@@ -954,7 +1347,6 @@
         }
 
         function downloadMap() {
-            // Clean up doors before export
             mapData.doors = mapData.doors.filter(door => {
                 const x = door.position.x;
                 const y = door.position.y;
@@ -991,7 +1383,7 @@
                 const item = document.createElement('div');
                 item.className = 'list-item';
                 item.innerHTML = `
-                    <span>${trans.type} at (${trans.position.x}, ${trans.position.y}) â†’ ${trans.target_map}</span>
+                    <span>${trans.type} at (${trans.position.x}, ${trans.position.y}) → ${trans.target_map}</span>
                     <button onclick="removeTransition(${index})">Remove</button>
                 `;
                 list.appendChild(item);

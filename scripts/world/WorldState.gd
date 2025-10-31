@@ -5,6 +5,7 @@ class_name WorldState
 var current_map_id: String = "facility_floor1"
 var player_position: Vector2 = Vector2.ZERO
 var door_states: Dictionary = {}
+var interactable_states: Dictionary = {}  # Track state of interactables by ID
 var collected_items: Array = []
 var killed_enemies: Array = []
 var completed_events: Array = []
@@ -31,6 +32,7 @@ func to_dict() -> Dictionary:
 			"y": player_position.y
 		},
 		"door_states": door_states,
+		"interactable_states": interactable_states,
 		"collected_items": collected_items,
 		"killed_enemies": killed_enemies,
 		"completed_events": completed_events,
@@ -45,6 +47,7 @@ func from_dict(data: Dictionary):
 	player_position = Vector2(pos.x, pos.y)
 	
 	door_states = data.get("door_states", {})
+	interactable_states = data.get("interactable_states", {})
 	collected_items = data.get("collected_items", [])
 	killed_enemies = data.get("killed_enemies", [])
 	completed_events = data.get("completed_events", [])
@@ -135,9 +138,23 @@ func reset():
 	current_map_id = "facility_floor1"
 	player_position = Vector2.ZERO
 	door_states.clear()
+	interactable_states.clear()
 	collected_items.clear()
 	killed_enemies.clear()
 	completed_events.clear()
 	visited_maps.clear()
 	inventory.clear_grid()
 	print("World state reset")
+
+# Interactable state management
+func save_interactable_state(interactable: Interactable):
+	interactable_states[interactable.interactable_id] = interactable.to_dict()
+
+func load_interactable_state(interactable: Interactable) -> bool:
+	if interactable_states.has(interactable.interactable_id):
+		interactable.from_dict(interactable_states[interactable.interactable_id])
+		return true
+	return false
+
+func get_interactable_state(interactable_id: String) -> Dictionary:
+	return interactable_states.get(interactable_id, {})

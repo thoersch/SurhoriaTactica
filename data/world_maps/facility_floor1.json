@@ -709,5 +709,18 @@
 		"battle_01_outbreak"
 	  ]
 	}
+  ],
+  "objects": [
+	{
+	  "id": "key_crane",
+	  "type": "item",
+	  "position": {
+		"x": 11,
+		"y": 8
+	  },
+	  "item_id": "key_crane",
+	  "amount": 1,
+	  "examine_text": "An old brass key with a crane engraved on its bow. The metal is worn but the craftsmanship is exquisite."
+	}
   ]
 }

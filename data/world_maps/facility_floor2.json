@@ -674,17 +674,19 @@
 	},
 	{
 	  "position": {
-		"x": 23,
-		"y": 10
+		"x": 12,
+		"y": 12
 	  },
 	  "is_open": false
 	},
 	{
 	  "position": {
-		"x": 12,
-		"y": 12
+		"x": 9,
+		"y": 7
 	  },
-	  "is_open": false
+	  "is_open": false,
+	  "required_key": "diamond",
+	  "lock_hint": "This door is locked. The lock has an engraving of a Diamond on it."
 	}
   ],
   "encounter_zones": [

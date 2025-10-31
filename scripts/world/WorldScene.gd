@@ -5,9 +5,14 @@ var world_state: WorldState
 var current_map_data: Dictionary = {}
 var tile_size: int = 32
 var collision_tiles: Array = []
+var interactables: Array = []  # Array of Interactable objects
 
 # UI for messages
 var message_label: Label
+var message_layer: CanvasLayer
+var inventory_ui: InventoryUI
+var container_ui: ContainerUI
+var document_ui: DocumentUI
 
 # Rendering
 var tile_colors = {
@@ -28,8 +33,11 @@ func _ready():
 	# Initialize world state
 	world_state = WorldState.new()
 	
-	# Setup message label
+	# Setup UI
 	setup_message_ui()
+	setup_inventory_ui()
+	setup_container_ui()
+	setup_document_ui()
 	
 	# Check if we're returning from battle
 	var returning_from_battle = false
@@ -55,6 +63,20 @@ func _ready():
 		else:
 			print("No saved state, using defaults")
 	
+	# Add some test items if inventory is empty (new game)
+	if world_state.inventory.items.is_empty():
+		print("Adding starting items to inventory...")
+		
+		# Add some healing items
+		var herbs = ItemDatabase.create_item("health_herb", 3)
+		if herbs:
+			world_state.inventory.add_item(herbs)
+		
+		# Add some ammo
+		var ammo = ItemDatabase.create_item("ammo_handgun", 15)
+		if ammo:
+			world_state.inventory.add_item(ammo)
+	
 	# Load the map (pass whether we have saved state)
 	load_map(world_state.current_map_id, state_loaded)
 	spawn_player()
@@ -73,18 +95,97 @@ func _ready():
 		player.interaction_requested.connect(_on_interaction_requested)
 
 func setup_message_ui():
+	# Create a CanvasLayer so messages are always in screen space
+	message_layer = CanvasLayer.new()
+	message_layer.layer = 100  # High layer for visibility
+	add_child(message_layer)
+	
 	message_label = Label.new()
-	message_label.position = Vector2(20, 20)
 	message_label.add_theme_font_size_override("font_size", 16)
 	message_label.add_theme_color_override("font_color", Color.YELLOW)
 	message_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	message_label.add_theme_constant_override("outline_size", 2)
 	message_label.visible = false
-	add_child(message_label)
+	message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	message_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	message_layer.add_child(message_label)
+
+func setup_inventory_ui():
+	# Create a CanvasLayer so inventory is always in screen space
+	var inventory_layer = CanvasLayer.new()
+	inventory_layer.name = "InventoryLayer"
+	inventory_layer.layer = 100
+	add_child(inventory_layer)
+	
+	inventory_ui = preload("res://scripts/inventory/InventoryUI.gd").new()
+	inventory_ui.visible = false
+	inventory_ui.item_used.connect(_on_item_used)
+	inventory_layer.add_child(inventory_ui)
+	
+	# Initialize with world state's inventory
+	inventory_ui.initialize(world_state.inventory)
+
+func setup_container_ui():
+	var container_layer = CanvasLayer.new()
+	container_layer.name = "ContainerLayer"
+	container_layer.layer = 101  # Above inventory
+	add_child(container_layer)
+	
+	container_ui = preload("res://scripts/inventory/ContainerUI.gd").new()
+	container_ui.visible = false
+	container_ui.container_closed.connect(_on_container_closed)
+	container_ui.items_transferred.connect(_on_items_transferred)
+	container_layer.add_child(container_ui)
+
+func setup_document_ui():
+	var document_layer = CanvasLayer.new()
+	document_layer.name = "DocumentLayer"
+	document_layer.layer = 102  # Above containers
+	add_child(document_layer)
+	
+	document_ui = preload("res://scripts/inventory/DocumentUI.gd").new()
+	document_ui.visible = false
+	document_ui.document_closed.connect(_on_document_closed)
+	document_layer.add_child(document_ui)
+
+func _input(event):
+	# Toggle inventory with Tab or I key
+	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_TAB):
+		if inventory_ui:
+			inventory_ui.toggle_visibility()
+			get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and event.keycode == KEY_I:
+		if inventory_ui:
+			inventory_ui.toggle_visibility()
+			get_viewport().set_input_as_handled()
+
+func _on_item_used(item: Item):
+	if item.item_type == Item.ItemType.CONSUMABLE:
+		# For now, just show a message
+		# In the future, this could heal player units in the roster
+		show_message("Used " + item.item_name)
+		
+		# Remove the item (or decrease stack)
+		if item.stackable:
+			item.remove_from_stack(1)
+			if item.current_stack <= 0:
+				world_state.inventory.remove_item(item)
+		else:
+			world_state.inventory.remove_item(item)
+		
+		# Save state
+		world_state.save_to_file()
 
 func show_message(text: String, duration: float = 3.0):
 	message_label.text = text
 	message_label.visible = true
+	
+	# Position in screen space (CanvasLayer makes this independent of camera)
+	var viewport_size = get_viewport_rect().size
+	
+	# Center horizontally, position in upper-middle of screen
+	message_label.position = Vector2(viewport_size.x / 2 - 200, viewport_size.y * 0.25)
+	message_label.size = Vector2(400, 60)
 	
 	# Hide after duration
 	await get_tree().create_timer(duration).timeout
@@ -120,6 +221,7 @@ func load_map(map_id: String, preserve_state: bool = false):
 				world_state.mark_door_open(pos, door.get("is_open", false))
 	
 	create_collision()
+	load_interactables()
 	
 	print("Loaded map: ", current_map_data.get("name", "Unknown"))
 	print("Door states: ", world_state.door_states)
@@ -146,6 +248,41 @@ func create_collision():
 func create_collision_tile(x: int, y: int):
 	var static_body = StaticBody2D.new()
 	static_body.position = Vector2(x * tile_size + tile_size / 2, y * tile_size + tile_size / 2)
+	
+	var collision_shape = CollisionShape2D.new()
+	var shape = RectangleShape2D.new()
+	shape.size = Vector2(tile_size, tile_size)
+	collision_shape.shape = shape
+	
+	static_body.add_child(collision_shape)
+	add_child(static_body)
+	collision_tiles.append(static_body)
+
+func load_interactables():
+	# Clear existing interactables
+	interactables.clear()
+	
+	var interactables_data = current_map_data.get("interactables", [])
+	
+	for data in interactables_data:
+		var interactable = Interactable.new(data)
+		
+		# Try to load saved state
+		world_state.load_interactable_state(interactable)
+		
+		interactables.append(interactable)
+		
+		# Create collision for interactable
+		create_interactable_collision(interactable)
+	
+	print("Loaded ", interactables.size(), " interactables")
+
+func create_interactable_collision(interactable: Interactable):
+	var static_body = StaticBody2D.new()
+	static_body.position = Vector2(
+		interactable.position.x * tile_size + tile_size / 2,
+		interactable.position.y * tile_size + tile_size / 2
+	)
 	
 	var collision_shape = CollisionShape2D.new()
 	var shape = RectangleShape2D.new()
@@ -227,6 +364,46 @@ func _draw():
 				)
 			
 			draw_rect(rect, Color(0.1, 0.1, 0.1), false, 1.0)
+	
+	# Draw interactables
+	for interactable in interactables:
+		draw_interactable(interactable)
+
+func draw_interactable(interactable: Interactable):
+	var pos = Vector2(interactable.position.x * tile_size, interactable.position.y * tile_size)
+	var rect = Rect2(pos, Vector2(tile_size, tile_size))
+	
+	# Draw object as a crate/box
+	draw_rect(rect, Color(0.6, 0.5, 0.3))
+	
+	# Draw darker outline
+	draw_rect(rect, Color(0.3, 0.25, 0.15), false, 2.0)
+	
+	# Draw X pattern on the box
+	var padding = 8
+	draw_line(
+		pos + Vector2(padding, padding),
+		pos + Vector2(tile_size - padding, tile_size - padding),
+		Color(0.4, 0.3, 0.2), 2.0
+	)
+	draw_line(
+		pos + Vector2(tile_size - padding, padding),
+		pos + Vector2(padding, tile_size - padding),
+		Color(0.4, 0.3, 0.2), 2.0
+	)
+	
+	# Draw indicator if it has items or documents
+	if interactable.has_container:
+		# Draw small box icon
+		var icon_size = 6
+		var icon_pos = pos + Vector2(tile_size - icon_size - 4, 4)
+		draw_rect(Rect2(icon_pos, Vector2(icon_size, icon_size)), Color(1.0, 0.8, 0.2))
+	
+	if interactable.has_document():
+		# Draw small document icon
+		var icon_size = 6
+		var icon_pos = pos + Vector2(4, 4)
+		draw_rect(Rect2(icon_pos, Vector2(icon_size, icon_size)), Color(0.9, 0.9, 0.8))
 
 func _on_interaction_requested(tile_pos: Vector2):
 	print("Interaction with tile: ", tile_pos)
@@ -237,6 +414,12 @@ func _on_interaction_requested(tile_pos: Vector2):
 	var tiles = current_map_data.get("tiles", [])
 	if tile_pos.y >= tiles.size() or tile_pos.x >= tiles[int(tile_pos.y)].size():
 		return
+	
+	# Check for interactable at this position first
+	for interactable in interactables:
+		if interactable.position == tile_pos:
+			interact_with_object(interactable)
+			return
 	
 	var tile_type = tiles[int(tile_pos.y)][int(tile_pos.x)]
 	
@@ -319,6 +502,10 @@ func transition_to_map(target_map: String, target_position: Dictionary):
 	if player:
 		world_state.player_position = player.position
 	
+	# Save interactable states before transitioning
+	for interactable in interactables:
+		world_state.save_interactable_state(interactable)
+	
 	world_state.save_to_file()
 	
 	load_map(target_map, true)
@@ -329,6 +516,55 @@ func transition_to_map(target_map: String, target_position: Dictionary):
 			target_position.y * tile_size + tile_size / 2
 		)
 		player.position = world_state.player_position
+
+func interact_with_object(interactable: Interactable):
+	print("Interacting with: ", interactable.name)
+	
+	# Mark as examined
+	if not interactable.is_examined:
+		interactable.examine()
+		show_message("Examined: " + interactable.name)
+	
+	# Show description
+	show_message(interactable.description, 4.0)
+	
+	# Handle container
+	if interactable.has_container and interactable.container_inventory:
+		# Show container UI
+		await get_tree().create_timer(0.5).timeout  # Brief delay after message
+		container_ui.initialize(world_state.inventory, interactable.container_inventory, interactable.name)
+		container_ui.visible = true
+	
+	# Handle document (after container is closed, or immediately if no container)
+	if interactable.has_document():
+		if interactable.has_container:
+			# Wait for container to close
+			await container_ui.container_closed
+		
+		# Show document
+		var doc_title = interactable.name
+		var doc_text = interactable.document_text
+		if doc_text != "":
+			document_ui.show_document(doc_title, doc_text)
+	
+	# Save state
+	world_state.save_interactable_state(interactable)
+	world_state.save_to_file()
+
+func _on_container_closed():
+	# Save all interactable states when container closes
+	for interactable in interactables:
+		world_state.save_interactable_state(interactable)
+	world_state.save_to_file()
+
+func _on_items_transferred():
+	# Auto-save when items are moved
+	for interactable in interactables:
+		world_state.save_interactable_state(interactable)
+	world_state.save_to_file()
+
+func _on_document_closed():
+	pass  # Nothing specific to do
 
 func _on_battle_triggered():
 	print("Transitioning to battle...")
