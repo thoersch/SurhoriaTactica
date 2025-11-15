@@ -16,6 +16,7 @@ var grid_size: int = 64
 var current_battle_id: String = ""
 var current_battle_data: Dictionary = {}
 var terrain_data: Array = []
+var current_los_data: Dictionary = {}
 
 # Game data
 var units: Array = []
@@ -26,6 +27,9 @@ var astar: AStar2D
 # Turn management
 var turn_manager: TurnManager
 
+enum ActionMode { NONE, MOVE, ATTACK }
+var current_action_mode: ActionMode = ActionMode.NONE
+
 # References
 var grid: TacticalGrid
 var ui_panel: Panel
@@ -35,6 +39,7 @@ var turn_label: Label
 var action_buttons: Control
 var battle_item_ui: Control
 var game_root: Node
+var los_overlay: LOSOverlay
 
 func _init():
 	astar = AStar2D.new()
@@ -105,6 +110,9 @@ func setup_grid(parent: Node):
 	grid = TacticalGrid.new(grid_width, grid_height, grid_size)
 	grid.set_terrain_data(terrain_data)
 	parent.add_child(grid)
+	
+	los_overlay = LOSOverlay.new(grid_size)
+	parent.add_child(los_overlay)
 
 func setup_astar():
 	astar.clear()
@@ -187,26 +195,40 @@ func setup_ui(parent: Node):
 	
 	action_buttons = Control.new()
 	action_buttons.position = Vector2(10, 390)
-	action_buttons.size = Vector2(230, 100)
+	action_buttons.size = Vector2(230, 150)  # Increased height for new button
 	ui_panel.add_child(action_buttons)
-	
-	var pass_button = Button.new()
-	pass_button.text = "Pass Turn"
-	pass_button.position = Vector2(0, 0)
-	pass_button.size = Vector2(110, 40)
-	pass_button.pressed.connect(_on_pass_button_pressed)
-	action_buttons.add_child(pass_button)
-	
+
+	var move_button = Button.new()
+	move_button.text = "Move"
+	move_button.position = Vector2(0, 0)
+	move_button.size = Vector2(110, 40)
+	move_button.pressed.connect(_on_move_button_pressed)
+	action_buttons.add_child(move_button)
+
+	var attack_button = Button.new()
+	attack_button.text = "Attack"
+	attack_button.position = Vector2(120, 0)
+	attack_button.size = Vector2(110, 40)
+	attack_button.pressed.connect(_on_attack_button_pressed)
+	action_buttons.add_child(attack_button)
+
 	var items_button = Button.new()
 	items_button.text = "Items"
-	items_button.position = Vector2(120, 0)
+	items_button.position = Vector2(0, 50)
 	items_button.size = Vector2(110, 40)
 	items_button.pressed.connect(_on_items_button_pressed)
 	action_buttons.add_child(items_button)
-	
+
+	var pass_button = Button.new()
+	pass_button.text = "Pass"
+	pass_button.position = Vector2(120, 50)
+	pass_button.size = Vector2(110, 40)
+	pass_button.pressed.connect(_on_pass_button_pressed)
+	action_buttons.add_child(pass_button)
+
 	var end_turn_button = Button.new()
-	end_turn_button.text = "End Phase"
-	end_turn_button.position = Vector2(0, 50)
+	end_turn_button.text = "End Turn"
+	end_turn_button.position = Vector2(0, 150)
 	end_turn_button.size = Vector2(230, 40)
 	end_turn_button.pressed.connect(_on_end_turn_button_pressed)
 	action_buttons.add_child(end_turn_button)
@@ -313,8 +335,57 @@ func create_unit(parent: Node, grid_pos: Vector2, color: Color, data: Dictionary
 	parent.add_child(unit)
 	return unit
 
+func _on_move_button_pressed():
+	if not grid.selected_unit:
+		return
+	
+	if not grid.selected_unit.can_move():
+		print("Unit cannot move")
+		return
+	
+	# Enter move mode
+	current_action_mode = ActionMode.MOVE
+	
+	# Show move range
+	var move_range = calculate_move_range(grid.selected_unit.grid_pos, grid.selected_unit.move_range)
+	grid.set_move_range(move_range)
+	
+	# Clear attack displays
+	grid.set_attack_range([])
+	grid.set_min_range([])
+	los_overlay.set_los_data({})
+	current_los_data = {}
+	
+	refresh_display()
+	print("Move mode activated")
+
+func _on_attack_button_pressed():
+	if not grid.selected_unit:
+		return
+	
+	if not grid.selected_unit.can_attack():
+		print("Unit cannot attack")
+		return
+	
+	# Enter attack mode
+	current_action_mode = ActionMode.ATTACK
+	
+	# Show attack range
+	var attack_range = calculate_attack_range(grid.selected_unit.grid_pos, grid.selected_unit.attack_range)
+	grid.set_attack_range(attack_range)
+	
+	# Clear movement displays
+	grid.set_move_range([])
+	grid.set_path([])
+	
+	refresh_display()
+	print("Attack mode activated")
+
 func _on_unit_clicked(unit: Unit):
 	print("Unit clicked: ", unit.unit_name, " Player: ", unit.is_player, " Turn: ", turn_manager.is_player_turn())
+	
+	# Clear action mode when selecting different unit
+	current_action_mode = ActionMode.NONE
 	
 	# Can't interact with dead units
 	if not unit.is_alive():
@@ -383,6 +454,7 @@ func select_unit(unit: Unit):
 		print("Unit cannot attack")
 		grid.set_attack_range([])
 		grid.set_min_range([])
+		los_overlay.set_los_data({})
 	
 	grid.set_path([])
 	unit_selected.emit(unit)
@@ -402,12 +474,28 @@ func select_unit(unit: Unit):
 		grid.set_attack_range(attack_range)
 	else:
 		grid.set_attack_range([])
+		los_overlay.set_los_data({})
 	
 	grid.set_path([])
 	unit_selected.emit(unit)
 	refresh_display()
 
 func attack_with_unit(attacker: Unit, target_pos: Vector2):
+	# Check LOS before attacking
+	var los_result = LineOfSight.check_line_of_sight(
+		attacker.grid_pos,
+		target_pos,
+		terrain_data,
+		units,
+		attacker
+	)
+	
+	# If completely blocked, show message and don't attack
+	if los_result.blocked:
+		print("Attack blocked by cover!")
+		# Could show a message to player here
+		return
+	
 	# Get the primary target (if any)
 	var primary_target = null
 	for unit in units:
@@ -434,14 +522,32 @@ func attack_with_unit(attacker: Unit, target_pos: Vector2):
 	# Show attack animation
 	await attacker.attack_unit(targets[0])
 	
-	# Apply damage to all targets
+	# Apply damage to all targets with LOS calculations
 	for target in targets:
-		var damage = max(1, attacker.attack - target.defense)
+		# Check LOS for each target
+		var target_los = LineOfSight.check_line_of_sight(
+			attacker.grid_pos,
+			target.grid_pos,
+			terrain_data,
+			units,
+			attacker
+		)
+		
+		# Calculate base damage
+		var base_damage = max(1, attacker.attack - target.defense)
+		
+		# Apply coverage reduction
+		var damage = LineOfSight.calculate_damage_with_coverage(base_damage, target_los.coverage)
+		
 		# Reduce splash damage for secondary targets
 		if target != primary_target and targets.size() > 1:
 			damage = int(damage * 0.7)  # 70% damage to splash targets
 		
 		target.take_damage(damage)
+		
+		# Show damage popup with coverage info
+		if target_los.coverage > 0:
+			show_coverage_damage_popup(target, damage, base_damage, target_los.coverage)
 		
 		# Remove enemy units when they die, but keep player units as corpses
 		if not target.is_alive() and not target.is_player:
@@ -454,6 +560,8 @@ func attack_with_unit(attacker: Unit, target_pos: Vector2):
 	grid.set_attack_range([])
 	grid.set_min_range([])
 	grid.set_aoe_preview([])
+	los_overlay.set_los_data({})
+	current_los_data = {}
 	
 	# Auto-end turn if unit has both moved and attacked
 	if attacker.has_moved and attacker.has_attacked:
@@ -462,12 +570,38 @@ func attack_with_unit(attacker: Unit, target_pos: Vector2):
 	check_battle_end()
 	update_unit_info(attacker)
 	refresh_display()
+	current_action_mode = ActionMode.NONE
+
+func get_unit_at(grid_pos: Vector2) -> Unit:
+	for unit in units:
+		if unit.grid_pos == grid_pos:
+			return unit
+	return null
 
 func remove_unit(unit: Unit):
 	units.erase(unit)
 	player_units.erase(unit)
 	enemy_units.erase(unit)
 	unit.queue_free()
+	
+func show_coverage_damage_popup(target: Unit, final_damage: int, base_damage: int, coverage: int):
+	var popup = Label.new()
+	popup.text = str(final_damage)
+	if coverage > 0:
+		popup.text += "\n(" + str(coverage) + "% cover)"
+	
+	popup.add_theme_font_size_override("font_size", 20)
+	popup.add_theme_color_override("font_color", Color.RED)
+	popup.add_theme_color_override("font_outline_color", Color.BLACK)
+	popup.add_theme_constant_override("outline_size", 2)
+	popup.position = target.position + Vector2(-20, -40)
+	
+	game_root.add_child(popup)
+	
+	var tween = popup.create_tween()
+	tween.tween_property(popup, "position:y", popup.position.y - 30, 1.0)
+	tween.parallel().tween_property(popup, "modulate:a", 0.0, 1.0)
+	tween.tween_callback(popup.queue_free)
 	
 func setup_battle_item_ui(parent: Node):
 	# Create canvas layer for item UI
@@ -579,6 +713,7 @@ func use_item_on_unit(item: Item, unit: Unit):
 	# Clear movement/attack ranges
 	grid.set_move_range([])
 	grid.set_attack_range([])
+	los_overlay.set_los_data({})
 
 func show_heal_effect(unit: Unit, amount: int):
 	# Create floating text showing heal amount
@@ -622,6 +757,7 @@ func _on_unit_action_complete(unit: Unit):
 	if grid.selected_unit == unit:
 		grid.set_move_range([])
 		grid.set_attack_range([])
+		los_overlay.set_los_data({})
 	
 	refresh_display()
 	check_all_player_units_acted()
@@ -639,6 +775,7 @@ func end_player_turn():
 	grid.set_selected_unit(null)
 	grid.set_move_range([])
 	grid.set_attack_range([])
+	los_overlay.set_los_data({})
 	ui_panel.visible = false
 	refresh_display()
 
@@ -864,41 +1001,96 @@ func get_point_id(grid_pos: Vector2) -> int:
 
 func handle_mouse_motion(mouse_pos: Vector2):
 	var selected = grid.selected_unit
-	if selected and selected.can_move() and turn_manager.is_player_turn():
-		var mouse_grid = grid.world_to_grid(mouse_pos)
-		
-		# Validate grid position
-		if mouse_grid.x < 0 or mouse_grid.x >= grid_width or mouse_grid.y < 0 or mouse_grid.y >= grid_height:
-			grid.set_path([])
-			grid.set_aoe_preview([])
-			refresh_display()
-			return
-		
-		if mouse_grid in grid.move_range_cells:
+	
+	# Early exit if no unit selected or not player turn
+	if not selected or not turn_manager.is_player_turn():
+		grid.set_path([])
+		grid.set_aoe_preview([])
+		los_overlay.set_los_data({})
+		current_los_data = {}
+		refresh_display()
+		return
+	
+	var mouse_grid = grid.world_to_grid(mouse_pos)
+	
+	# Validate grid position
+	if mouse_grid.x < 0 or mouse_grid.x >= grid_width or mouse_grid.y < 0 or mouse_grid.y >= grid_height:
+		grid.set_path([])
+		grid.set_aoe_preview([])
+		los_overlay.set_los_data({})
+		current_los_data = {}
+		refresh_display()
+		return
+	
+	# Handle based on current mode
+	if current_action_mode == ActionMode.MOVE:
+		# Show movement path preview
+		if selected.can_move() and mouse_grid in grid.move_range_cells:
 			var path = calculate_path(selected.grid_pos, mouse_grid)
 			grid.set_path(path)
 		else:
 			grid.set_path([])
 		
-		refresh_display()
+		# Clear attack previews
+		los_overlay.set_los_data({})
+		grid.set_aoe_preview([])
+		current_los_data = {}
 	
-	# Show AoE preview when hovering over attack targets
-	if selected and selected.can_attack() and selected.attack_aoe > 0 and turn_manager.is_player_turn():
-		var mouse_grid = grid.world_to_grid(mouse_pos)
+	elif current_action_mode == ActionMode.ATTACK:
+		# Clear movement preview
+		grid.set_path([])
 		
-		if mouse_grid in grid.attack_range_cells:
-			var aoe_cells = []
-			for y in range(grid_height):
-				for x in range(grid_width):
-					var pos = Vector2(x, y)
-					var distance = AIController.manhattan_distance(mouse_grid, pos)
-					if distance <= selected.attack_aoe:
-						aoe_cells.append(pos)
-			grid.set_aoe_preview(aoe_cells)
+		# Show attack preview with LOS
+		if selected.can_attack() and mouse_grid in grid.attack_range_cells:
+			# Check LOS to the hovered cell
+			var los_result = LineOfSight.check_line_of_sight(
+				selected.grid_pos,
+				mouse_grid,
+				terrain_data,
+				units,
+				selected
+			)
+			
+			current_los_data = los_result
+			current_los_data["target_pos"] = mouse_grid
+			
+			# Calculate damage preview
+			var target_unit = get_unit_at(mouse_grid)
+			if target_unit and target_unit.is_player != selected.is_player:
+				var base_damage = max(1, selected.attack - target_unit.defense)
+				var final_damage = LineOfSight.calculate_damage_with_coverage(base_damage, los_result.coverage)
+				current_los_data["base_damage"] = base_damage
+				current_los_data["final_damage"] = final_damage
+				current_los_data["target_unit"] = target_unit
+			
+			# Pass LOS data to grid for rendering
+			los_overlay.set_los_data(current_los_data)
+			
+			# Show AoE preview if applicable
+			if selected.attack_aoe > 0:
+				var aoe_cells = []
+				for y in range(grid_height):
+					for x in range(grid_width):
+						var pos = Vector2(x, y)
+						var distance = AIController.manhattan_distance(mouse_grid, pos)
+						if distance <= selected.attack_aoe:
+							aoe_cells.append(pos)
+				grid.set_aoe_preview(aoe_cells)
+			else:
+				grid.set_aoe_preview([])
 		else:
+			# Not hovering over valid attack target
+			current_los_data = {}
+			los_overlay.set_los_data({})
 			grid.set_aoe_preview([])
-		
-		refresh_display()
+	else:
+		# No mode selected - clear everything
+		grid.set_path([])
+		los_overlay.set_los_data({})
+		grid.set_aoe_preview([])
+		current_los_data = {}
+	
+	refresh_display()
 
 func handle_mouse_click(mouse_pos: Vector2):
 	if not turn_manager.is_player_turn():
@@ -911,26 +1103,34 @@ func handle_mouse_click(mouse_pos: Vector2):
 		if mouse_grid.x < 0 or mouse_grid.x >= grid_width or mouse_grid.y < 0 or mouse_grid.y >= grid_height:
 			return
 		
-		# Check if clicking for movement
-		if selected.can_move() and mouse_grid in grid.move_range_cells:
-			await selected.move_to(mouse_grid, grid.current_path)
-			
-			# Auto-end turn if unit has already attacked
-			if selected.has_attacked:
-				selected.end_turn()
-			
-			# Update ranges after moving
-			if selected.can_attack():
-				var attack_range = calculate_attack_range(selected.grid_pos, selected.attack_range)
-				grid.set_attack_range(attack_range)
-			
-			grid.set_move_range([])
-			update_unit_info(selected)
-			refresh_display()
+		# Handle click based on current mode
+		if current_action_mode == ActionMode.MOVE:
+			# Check if clicking for movement
+			if selected.can_move() and mouse_grid in grid.move_range_cells:
+				await selected.move_to(mouse_grid, grid.current_path)
+				
+				# Clear move mode after moving
+				current_action_mode = ActionMode.NONE
+				grid.set_move_range([])
+				grid.set_path([])
+				
+				# Auto-end turn if unit has already attacked
+				if selected.has_attacked:
+					selected.end_turn()
+				
+				update_unit_info(selected)
+				refresh_display()
 		
-		# Check if clicking for attack (including ground targeting for AoE)
-		elif selected.can_attack() and mouse_grid in grid.attack_range_cells:
-			attack_with_unit(selected, mouse_grid)  # Pass position
+		elif current_action_mode == ActionMode.ATTACK:
+			# Check if clicking for attack
+			if selected.can_attack() and mouse_grid in grid.attack_range_cells:
+				await attack_with_unit(selected, mouse_grid)
+				
+				# Clear attack mode after attacking
+				current_action_mode = ActionMode.NONE
+				grid.set_attack_range([])
+				los_overlay.set_los_data({})
+				current_los_data = {}
 
 func refresh_display():
 	if grid:

@@ -3,42 +3,42 @@
 	"floor": {
 	  "traversable": true,
 	  "cover": 0,
-	  "description": "Open floor"
+	  "description": "Open floor - no cover"
 	},
 	"wall": {
 	  "traversable": false,
-	  "cover": 0,
-	  "description": "Solid wall"
+	  "cover": 2,
+	  "description": "Solid wall - blocks line of sight completely"
 	},
 	"door": {
 	  "traversable": true,
 	  "cover": 0,
-	  "description": "Doorway"
+	  "description": "Doorway - no cover"
 	},
 	"crate": {
 	  "traversable": false,
 	  "cover": 2,
-	  "description": "Wooden crate - provides cover"
+	  "description": "Wooden crate - 100% cover, blocks shots"
 	},
 	"sandbag": {
 	  "traversable": false,
 	  "cover": 3,
-	  "description": "Sandbag barricade - heavy cover"
+	  "description": "Sandbag barricade - 50% cover, reduces damage by half"
 	},
 	"rubble": {
 	  "traversable": true,
 	  "cover": 1,
-	  "description": "Difficult terrain - light cover"
+	  "description": "Difficult terrain - 25% cover, slight damage reduction"
 	},
 	"water": {
 	  "traversable": false,
 	  "cover": 0,
-	  "description": "Deep water"
+	  "description": "Deep water - blocks movement but not shots"
 	},
 	"window": {
 	  "traversable": true,
 	  "cover": 1,
-	  "description": "Window - provides light cover"
+	  "description": "Window - 25% cover, provides light protection"
 	}
   }
 }

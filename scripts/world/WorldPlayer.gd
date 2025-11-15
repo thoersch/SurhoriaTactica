@@ -14,12 +14,19 @@ var min_steps_between_battles: int = 10
 var tile_size: int = 32
 var facing_direction: Vector2 = Vector2(0, 1)  # Default facing down
 
+var footstep_trail: Array = []  # Array of {position: Vector2, alpha: float}
+var footstep_distance: float = 15.0  # Distance between footsteps
+var last_footstep_pos: Vector2 = Vector2.ZERO
+var max_footsteps: int = 4  # Maximum number of visible footsteps
+var footstep_fade_speed: float = 3  # How fast footsteps fade
+
 func _ready():
 	var collision = CollisionShape2D.new()
 	var shape = CircleShape2D.new()
 	shape.radius = 14
 	collision.shape = shape
 	add_child(collision)
+	last_footstep_pos = position
 
 func _physics_process(delta):
 	# Get input direction
@@ -40,9 +47,18 @@ func _physics_process(delta):
 		facing_direction = direction  # Update facing direction
 		queue_redraw()  # Redraw to show new direction
 	
+	var distance = position.distance_to(last_footstep_pos)
+	if distance >= footstep_distance:
+		print("Creating footstep at distance: ", distance)
+		add_footstep(position)
+		last_footstep_pos = position
+		queue_redraw()
+		
 	# Move the character
 	velocity = direction * speed
 	move_and_slide()
+	
+	update_footsteps(delta)
 	
 	# Check for random encounters while moving
 	if direction.length() > 0:
@@ -59,6 +75,35 @@ func _input(event):
 		var facing_tile = get_facing_tile()
 		if facing_tile != current_tile:
 			interaction_requested.emit(facing_tile)
+
+func add_footstep(pos: Vector2):
+	"""Add a new footstep at the given position with direction"""
+	footstep_trail.append({
+		"position": pos,
+		"alpha": 1.0,
+		"direction": facing_direction  # Store direction for rotation
+	})
+	
+	if footstep_trail.size() > max_footsteps:
+		footstep_trail.pop_front()
+
+func update_footsteps(delta: float):
+	"""Fade out footsteps over time"""
+	var should_redraw = false
+	
+	for i in range(footstep_trail.size() - 1, -1, -1):
+		var footstep = footstep_trail[i]
+		footstep.alpha -= footstep_fade_speed * delta
+		
+		# Remove fully faded footsteps
+		if footstep.alpha <= 0:
+			footstep_trail.remove_at(i)
+			should_redraw = true
+		else:
+			should_redraw = true
+	
+	if should_redraw:
+		queue_redraw()
 
 func get_facing_tile() -> Vector2:
 	# Use the stored facing direction
@@ -90,9 +135,35 @@ func trigger_battle():
 	battle_triggered.emit()
 
 func _draw():
+	draw_footsteps()
 	# Draw player as a circle
 	draw_circle(Vector2.ZERO, 14, Color.GREEN)
 	
 	# Draw direction indicator based on facing direction
 	var indicator_pos = facing_direction * 7
 	draw_circle(indicator_pos, 3, Color.DARK_GREEN)
+
+func draw_footsteps():
+	"""Draw directional footsteps"""
+	for i in range(footstep_trail.size()):
+		var footstep = footstep_trail[i]
+		var local_pos = footstep.position - position
+		var alpha = footstep.alpha
+		var direction = footstep.get("direction", Vector2(0, 1))
+		
+		# Footprint color
+		var color = Color(0.2, 0.2, 0.2, alpha * 0.8)
+		
+		# Calculate rotation angle from direction
+		var angle = direction.angle() + PI / 2  # Adjust for upward default
+		
+		# Draw rotated footprints
+		var is_left = i % 2 == 0
+		var side_offset = 3.0 if is_left else -3.0
+		
+		# Rotate the offset by the direction angle
+		var rotated_offset = Vector2(side_offset, 0).rotated(angle)
+		var foot_pos = local_pos + rotated_offset
+		
+		# Draw foot
+		draw_circle(foot_pos, 2.5, color)
