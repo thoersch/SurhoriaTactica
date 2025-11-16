@@ -14,6 +14,8 @@ var min_steps_between_battles: int = 10
 var tile_size: int = 32
 var facing_direction: Vector2 = Vector2(0, 1)  # Default facing down
 
+var footstep_timer: float = 0.0
+const footstep_interval: float = 0.4
 var footstep_trail: Array = []  # Array of {position: Vector2, alpha: float}
 var footstep_distance: float = 15.0  # Distance between footsteps
 var last_footstep_pos: Vector2 = Vector2.ZERO
@@ -49,10 +51,17 @@ func _physics_process(delta):
 	
 	var distance = position.distance_to(last_footstep_pos)
 	if distance >= footstep_distance:
-		print("Creating footstep at distance: ", distance)
 		add_footstep(position)
 		last_footstep_pos = position
 		queue_redraw()
+		
+	if direction.length() > 0:  # When player is moving
+		if footstep_timer <= 0:
+			AudioManager.play_footstep()
+			footstep_timer = footstep_interval
+
+	if footstep_timer > 0:
+		footstep_timer -= delta
 		
 	# Move the character
 	velocity = direction * speed

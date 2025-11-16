@@ -10,6 +10,7 @@ var interactables: Array = []  # Array of Interactable objects
 # UI for messages
 var message_label: Label
 var message_layer: CanvasLayer
+var message_timer: SceneTreeTimer = null
 var inventory_ui: InventoryUI
 var container_ui: ContainerUI
 var document_ui: DocumentUI
@@ -106,6 +107,13 @@ func _ready():
 	if player:
 		player.battle_triggered.connect(_on_battle_triggered)
 		player.interaction_requested.connect(_on_interaction_requested)
+	
+	AudioManager.enter_world()
+	
+	if has_node("/root/GameManager"):
+		var pending = GameManager.get_pending_battle()
+		if pending != "":
+			TransitionManager.fade_from_black(1.0)
 
 func setup_message_ui():
 	# Create a CanvasLayer so messages are always in screen space
@@ -162,6 +170,9 @@ func setup_document_ui():
 	document_layer.add_child(document_ui)
 
 func _input(event):
+	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
+		_on_battle_triggered()
+		
 	# Toggle inventory with Tab or I key
 	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_TAB):
 		if inventory_ui:
@@ -190,6 +201,13 @@ func _on_item_used(item: Item):
 		world_state.save_to_file()
 
 func show_message(text: String, duration: float = 3.0):
+	if not message_label:
+		return
+	
+	# Cancel previous timer if it exists
+	if message_timer != null:
+		message_timer.timeout.disconnect(_hide_message)
+	
 	message_label.text = text
 	message_label.visible = true
 	
@@ -200,10 +218,14 @@ func show_message(text: String, duration: float = 3.0):
 	message_label.position = Vector2(viewport_size.x / 2 - 200, viewport_size.y * 0.25)
 	message_label.size = Vector2(400, 60)
 	
-	# Hide after duration
-	await get_tree().create_timer(duration).timeout
+	# Create new timer
+	message_timer = get_tree().create_timer(duration)
+	message_timer.timeout.connect(_hide_message)
+	
+func _hide_message():
 	if message_label:
 		message_label.visible = false
+	message_timer = null
 
 func load_map(map_id: String, preserve_state: bool = false):
 	world_state.current_map_id = map_id
@@ -699,12 +721,13 @@ func toggle_door(tile_pos: Vector2):
 	var door_data = get_door_data(tile_pos)
 	var required_key = door_data.get("required_key", "")
 	
+	# Case 1: No key required - just open it
 	if required_key == "":
-		# No key required, open it
 		world_state.mark_door_open(tile_pos, true)
+		AudioManager.play_sfx("door_open")
 		show_message("Door opened.")
 		
-		# Explore the newly accessible area on BOTH sides of the door
+		# Explore newly accessible area
 		var tiles = current_map_data.get("tiles", [])
 		var directions = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
 		for dir in directions:
@@ -715,14 +738,15 @@ func toggle_door(tile_pos: Vector2):
 		queue_redraw()
 		return
 	
-	# Door requires a key
-	if world_state.inventory.has_key(required_key):
-		# Player has the key!
+	# Case 2: Door requires a key
+	# Check if door is already unlocked (but not open)
+	if world_state.is_door_unlocked(tile_pos):
+		# Door is unlocked, now open it
 		world_state.mark_door_open(tile_pos, true)
-		var key_name = get_key_name(required_key)
-		show_message("Used the " + key_name + ".")
+		AudioManager.play_sfx("door_open")
+		show_message("Door opened.")
 		
-		# Explore the newly accessible area on BOTH sides of the door
+		# Explore newly accessible area
 		var tiles = current_map_data.get("tiles", [])
 		var directions = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
 		for dir in directions:
@@ -731,9 +755,22 @@ func toggle_door(tile_pos: Vector2):
 		
 		create_collision()
 		queue_redraw()
+		return
+	
+	# Case 3: Door is locked - check if player has key
+	if world_state.inventory.has_key(required_key):
+		# Player has the key - unlock the door (but don't open it yet)
+		world_state.mark_door_unlocked(tile_pos, true)
+		AudioManager.play_sfx("door_unlock")
+		var key_name = get_key_name(required_key)
+		show_message("Unlocked with " + key_name + ".")
+		
+		# Note: Door stays closed, player needs to interact again to open
+		queue_redraw()
 	else:
-		# Player doesn't have the key
-		var lock_hint = door_data.get("lock_hint", "")
+		# Player doesn't have the key - door is locked
+		AudioManager.play_sfx("door_locked")
+		var lock_hint = door_data.get("lock_hint", "The door is locked.")
 		show_message(lock_hint, 4.0)
 
 func get_door_data(tile_pos: Vector2) -> Dictionary:
@@ -759,7 +796,21 @@ func use_stairs(tile_pos: Vector2):
 		var trans_pos = Vector2(transition.position.x, transition.position.y)
 		if trans_pos == tile_pos:
 			print("Using stairs to: ", transition.target_map)
+			
+			# Play stairs sound effect
+			AudioManager.play_sfx("stairs")
+			
+			# Fade to black transition
+			TransitionManager.fade_to_black(0.8)
+			await TransitionManager.transition_complete
+			
+			# Change maps
 			transition_to_map(transition.target_map, transition.target_position)
+			
+			# Fade back in
+			await get_tree().create_timer(2).timeout
+			TransitionManager.fade_from_black(0.8)
+			
 			return
 
 func transition_to_map(target_map: String, target_position: Dictionary):
@@ -789,6 +840,10 @@ func transition_to_map(target_map: String, target_position: Dictionary):
 
 func _on_battle_triggered():
 	print("Transitioning to battle...")
+	AudioManager.play_sfx("battle_start")
+	TransitionManager.swirl_to_black(1.2, 6.0)
+	await TransitionManager.transition_halfway
+	
 	var battle_id = get_current_zone_battle()
 	transition_to_battle(battle_id)
 

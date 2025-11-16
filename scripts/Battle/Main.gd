@@ -10,7 +10,13 @@ func _ready():
 	game_state.battle_loaded.connect(_on_battle_loaded)
 	game_state.battle_won.connect(_on_battle_won)
 	game_state.battle_lost.connect(_on_battle_lost)
-
+	
+	AudioManager.enter_battle()
+	
+	await get_tree().create_timer(0.5).timeout
+	TransitionManager.fade_out_black(1.5)
+	await TransitionManager.transition_complete
+	
 func _input(event):
 	if game_state.battle_item_ui and game_state.battle_item_ui.visible:
 		return
@@ -46,6 +52,9 @@ func _on_battle_won():
 	# Wait a moment so player can see victory
 	await get_tree().create_timer(2.0).timeout
 	
+	TransitionManager.fade_to_black(1.0)
+	await TransitionManager.transition_complete
+	
 	# Return to world
 	if has_node("/root/GameManager"):
 		get_node("/root/GameManager").return_to_world()
@@ -56,6 +65,9 @@ func _on_battle_won():
 
 func _on_battle_lost():
 	await get_tree().create_timer(2.0).timeout
+	
+	TransitionManager.fade_to_black(1.0)
+	await TransitionManager.transition_halfway
 	
 	if has_node("/root/GameManager"):
 		get_node("/root/GameManager").return_to_world()

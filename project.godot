@@ -18,6 +18,8 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameManager="*res://scripts/world/GameManager.gd"
+AudioManager="*res://scripts/AudioManager.gd"
+TransitionManager="*res://scripts/world/TransitionManager.gd"
 
 [rendering]
 

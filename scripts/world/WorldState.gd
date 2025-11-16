@@ -5,6 +5,7 @@ class_name WorldState
 var current_map_id: String = "facility_floor1"
 var player_position: Vector2 = Vector2.ZERO
 var door_states: Dictionary = {}
+var door_unlocked_states: Dictionary = {}
 var interactable_states: Dictionary = {}  # Track state of interactables by ID
 var explored_tiles: Dictionary = {}
 var collected_items: Array = []
@@ -24,7 +25,7 @@ static func key_to_vector(key: String) -> Vector2:
 	if parts.size() == 2:
 		return Vector2(float(parts[0]), float(parts[1]))
 	return Vector2.ZERO
-	
+
 func mark_tile_explored(map_id: String, position: Vector2):
 	var key = map_id + ":" + vector_to_key(position)
 	explored_tiles[key] = true
@@ -81,6 +82,7 @@ func to_dict() -> Dictionary:
 			"y": player_position.y
 		},
 		"door_states": door_states,
+		"door_unlocked_states": door_unlocked_states,
 		"interactable_states": interactable_states,
 		"collected_items": collected_items,
 		"killed_enemies": killed_enemies,
@@ -97,6 +99,7 @@ func from_dict(data: Dictionary):
 	player_position = Vector2(pos.x, pos.y)
 	
 	door_states = data.get("door_states", {})
+	door_unlocked_states = data.get("door_unlocked_states", {})
 	interactable_states = data.get("interactable_states", {})
 	collected_items = data.get("collected_items", [])
 	killed_enemies = data.get("killed_enemies", [])
@@ -153,6 +156,14 @@ func mark_door_open(position: Vector2, is_open: bool):
 func is_door_open(position: Vector2) -> bool:
 	var key = vector_to_key(position)
 	return door_states.get(key, false)
+	
+func mark_door_unlocked(position: Vector2, is_unlocked: bool):
+	var key = vector_to_key(position)
+	door_unlocked_states[key] = is_unlocked
+
+func is_door_unlocked(position: Vector2) -> bool:
+	var key = vector_to_key(position)
+	return door_unlocked_states.get(key, false)
 
 func collect_item(item_id: String):
 	if not collected_items.has(item_id):
