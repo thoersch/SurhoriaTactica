@@ -7,6 +7,9 @@ signal interaction_requested(tile_pos: Vector2)
 @export var speed: float = 200.0
 @export var encounter_check_interval: float = 1.0
 
+var player_sprite: Sprite2D
+var player_texture: Texture2D
+
 var encounter_timer: float = 0.0
 var encounter_chance: float = 0.05
 var steps_since_battle: int = 0
@@ -29,6 +32,7 @@ func _ready():
 	collision.shape = shape
 	add_child(collision)
 	last_footstep_pos = position
+	setup_sprite()
 
 func _physics_process(delta):
 	# Get input direction
@@ -47,22 +51,20 @@ func _physics_process(delta):
 	if direction.length() > 0:
 		direction = direction.normalized()
 		facing_direction = direction  # Update facing direction
-		queue_redraw()  # Redraw to show new direction
+		
+		# Rotate sprite to face movement direction
+		if player_sprite:
+			player_sprite.rotation = direction.angle()
+		
+		queue_redraw()  # Redraw for footsteps and indicator
 	
+	# Create footstep if moved far enough
 	var distance = position.distance_to(last_footstep_pos)
 	if distance >= footstep_distance:
 		add_footstep(position)
 		last_footstep_pos = position
 		queue_redraw()
-		
-	if direction.length() > 0:  # When player is moving
-		if footstep_timer <= 0:
-			AudioManager.play_footstep()
-			footstep_timer = footstep_interval
-
-	if footstep_timer > 0:
-		footstep_timer -= delta
-		
+	
 	# Move the character
 	velocity = direction * speed
 	move_and_slide()
@@ -84,6 +86,27 @@ func _input(event):
 		var facing_tile = get_facing_tile()
 		if facing_tile != current_tile:
 			interaction_requested.emit(facing_tile)
+
+func setup_sprite():
+	"""Setup the player sprite with rotation"""
+	# Load texture
+	player_texture = load("res://assets/icons/units/player/rifleman_icon.png")
+	
+	if not player_texture:
+		push_error("Failed to load rifleman icon!")
+		return
+	
+	# Create sprite
+	player_sprite = Sprite2D.new()
+	player_sprite.texture = player_texture
+	
+	# Scale to fit
+	var icon_size = player_texture.get_size()
+	var target_size = 28
+	var scale_factor = target_size / max(icon_size.x, icon_size.y)
+	player_sprite.scale = Vector2(scale_factor, scale_factor)
+	
+	add_child(player_sprite)
 
 func add_footstep(pos: Vector2):
 	"""Add a new footstep at the given position with direction"""
@@ -146,11 +169,11 @@ func trigger_battle():
 func _draw():
 	draw_footsteps()
 	# Draw player as a circle
-	draw_circle(Vector2.ZERO, 14, Color.GREEN)
+	#draw_circle(Vector2.ZERO, 14, Color.GREEN)
 	
 	# Draw direction indicator based on facing direction
-	var indicator_pos = facing_direction * 7
-	draw_circle(indicator_pos, 3, Color.DARK_GREEN)
+	#var indicator_pos = facing_direction * 7
+	#draw_circle(indicator_pos, 3, Color.DARK_GREEN)
 
 func draw_footsteps():
 	"""Draw directional footsteps"""

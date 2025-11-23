@@ -1,0 +1,147 @@
+{
+  "skill_trees": {
+	"Rifleman": [
+	  {
+		"id": "rifleman_marksman",
+		"name": "Marksman",
+		"description": "Gain +2 Attack when at full HP",
+		"type": "passive",
+		"max_rank": 1,
+		"cost_per_rank": 1,
+		"required_level": 1,
+		"prerequisites": [],
+		"passive_effects": {
+		  "attack_at_full_hp": 2
+		}
+	  },
+	  {
+		"id": "rifleman_suppression",
+		"name": "Suppression Fire",
+		"description": "Reduce enemy defense by 15% when attacking through cover",
+		"type": "passive",
+		"max_rank": 1,
+		"cost_per_rank": 1,
+		"required_level": 2,
+		"prerequisites": ["rifleman_marksman"],
+		"passive_effects": {
+		  "cover_penetration": 15
+		}
+	  },
+	  {
+		"id": "rifleman_headshot",
+		"name": "Headshot",
+		"description": "Active: Deal 150% damage. Range: 4. Cooldown: 3 turns",
+		"type": "active_attack",
+		"max_rank": 1,
+		"cost_per_rank": 2,
+		"required_level": 4,
+		"prerequisites": ["rifleman_suppression"],
+		"active_data": {
+		  "damage_mult": 1.5,
+		  "range": 4,
+		  "cooldown": 3
+		}
+	  }
+	],
+	"Scout": [
+	  {
+		"id": "scout_evasion",
+		"name": "Evasion",
+		"description": "Gain +3 Defense while moving (Stacks with rank)",
+		"type": "passive",
+		"max_rank": 2,
+		"cost_per_rank": 1,
+		"required_level": 1,
+		"prerequisites": [],
+		"passive_effects": {
+		  "defense_while_moving": 3
+		}
+	  },
+	  {
+		"id": "scout_flanking",
+		"name": "Flanking Bonus",
+		"description": "Deal +20% damage when attacking from behind or sides",
+		"type": "passive",
+		"max_rank": 1,
+		"cost_per_rank": 1,
+		"required_level": 2,
+		"prerequisites": ["scout_evasion"],
+		"passive_effects": {
+		  "flanking_bonus": 20
+		}
+	  },
+	  {
+		"id": "scout_dash",
+		"name": "Tactical Dash",
+		"description": "Active: Move +3 extra tiles this turn. Cooldown: 4 turns",
+		"type": "active_buff",
+		"max_rank": 1,
+		"cost_per_rank": 2,
+		"required_level": 3,
+		"prerequisites": ["scout_evasion"],
+		"active_data": {
+		  "move_bonus": 3,
+		  "cooldown": 4
+		}
+	  }
+	],
+	"Grenadier": [
+	  {
+		"id": "grenadier_blast",
+		"name": "Improved Blast",
+		"description": "Increase AoE radius by 1",
+		"type": "passive",
+		"max_rank": 1,
+		"cost_per_rank": 1,
+		"required_level": 1,
+		"prerequisites": [],
+		"passive_effects": {
+		  "aoe_bonus": 1
+		}
+	  },
+	  {
+		"id": "grenadier_rubble_expert",
+		"name": "Rubble Expert",
+		"description": "Gain +5 Defense while standing in rubble",
+		"type": "passive",
+		"max_rank": 1,
+		"cost_per_rank": 1,
+		"required_level": 2,
+		"prerequisites": ["grenadier_blast"],
+		"passive_effects": {
+		  "defense_in_rubble": 5
+		}
+	  },
+	  {
+		"id": "grenadier_breach",
+		"name": "Sandbag Breacher",
+		"description": "Deal 15% more damage through sandbag cover",
+		"type": "passive",
+		"max_rank": 1,
+		"cost_per_rank": 1,
+		"required_level": 2,
+		"prerequisites": ["grenadier_blast"],
+		"passive_effects": {
+		  "sandbag_penetration": 15
+		}
+	  },
+	  {
+		"id": "grenadier_incendiary",
+		"name": "Incendiary Grenade",
+		"description": "Active: Deal 20 damage over 2 turns. Range: 3, AoE: 2. Cooldown: 5",
+		"type": "active_attack",
+		"max_rank": 1,
+		"cost_per_rank": 3,
+		"required_level": 5,
+		"prerequisites": ["grenadier_rubble_expert", "grenadier_breach"],
+		"active_data": {
+		  "damage": 20,
+		  "dot_turns": 2,
+		  "range": 3,
+		  "aoe": 2,
+		  "cooldown": 5
+		}
+	  }
+	]
+  }
+}

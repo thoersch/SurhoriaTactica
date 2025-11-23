@@ -2,7 +2,7 @@ extends RefCounted
 class_name WorldState
 
 # Current world state
-var current_map_id: String = "facility_floor1"
+var current_map_id: String = "mansion_f1"
 var player_position: Vector2 = Vector2.ZERO
 var door_states: Dictionary = {}
 var door_unlocked_states: Dictionary = {}
@@ -93,7 +93,7 @@ func to_dict() -> Dictionary:
 	}
 
 func from_dict(data: Dictionary):
-	current_map_id = data.get("current_map_id", "facility_floor1")
+	current_map_id = data.get("current_map_id", "mansion_f1")
 	
 	var pos = data.get("player_position", {"x": 0, "y": 0})
 	player_position = Vector2(pos.x, pos.y)
@@ -197,7 +197,7 @@ func has_visited_map(map_id: String) -> bool:
 	return visited_maps.has(map_id)
 
 func reset():
-	current_map_id = "facility_floor1"
+	current_map_id = "mansion_f1"
 	player_position = Vector2.ZERO
 	door_states.clear()
 	interactable_states.clear()

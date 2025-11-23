@@ -301,6 +301,7 @@
         <div class="button-group">
             <button onclick="setTool('paint')">Paint</button>
             <button onclick="setTool('fill')">Fill</button>
+            <button onclick="setTool('select')">Select & Move</button>
             <button onclick="setTool('spawn')">Set Spawn</button>
             <button onclick="setTool('object')">Place Object</button>
             <button onclick="setTool('zone')">Add Zone</button>
@@ -410,6 +411,7 @@
                 <option value="battle_trigger">Battle Trigger</option>
                 <option value="event">Event Trigger</option>
                 <option value="examine">Examine Point</option>
+                <option value="cutscene">Cutscene Trigger</option>
             </select>
             
             <div id="object-config-fields">
@@ -510,7 +512,8 @@
             'npc': '👤',
             'battle_trigger': '⚔️',
             'event': '⭐',
-            'examine': '🔍'
+            'examine': '🔍',
+            'cutscene': '🎬'
         };
 
         let mapData = {
@@ -536,6 +539,16 @@
         let currentDoorConfigPos = null;
         let currentObjectConfigPos = null;
         let currentObjectConfigIndex = -1;
+
+        // Selection tool variables
+        let selectionStart = null;
+        let selectionEnd = null;
+        let selectedTiles = null;  // Stored tile data
+        let isMovingSelection = false;
+        let selectionOffset = null;
+
+        let lastMouseX = 0;
+        let lastMouseY = 0;
 
         window.onload = function() {
             canvas = document.getElementById('map-canvas');
@@ -578,7 +591,8 @@
                 'fill': 'Fill',
                 'spawn': 'Set Spawn',
                 'object': 'Place Object',
-                'zone': 'Add Zone'
+                'zone': 'Add Zone',
+                'select': 'Select & Move'
             };
             document.getElementById('current-tool').textContent = toolNames[tool];
             
@@ -647,9 +661,19 @@
 
         function setupEventListeners() {
             canvas.addEventListener('mousedown', handleMouseDown);
-            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mousemove', (e) => {
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                handleMouseMove(e);
+            });
             canvas.addEventListener('mouseup', handleMouseUp);
             canvas.addEventListener('mouseleave', handleMouseUp);
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && currentTool === 'select') {
+                    cancelSelection();
+                }
+            });
             
             document.getElementById('map-id').addEventListener('input', (e) => mapData.id = e.target.value);
             document.getElementById('map-name').addEventListener('input', (e) => mapData.name = e.target.value);
@@ -671,13 +695,37 @@
             
             document.getElementById('coordinates').textContent = `x: ${x}, y: ${y}`;
             
-            if (isInitialClick) {
+            if (isInitialClick && !isDragging) {
                 isDragging = true;
                 isInitialClick = false;
             }
             
-            if (isDragging && currentTool === 'paint' && selectedTile !== 'door') {
-                handleCanvasClick(e);
+            // Handle selection tool
+            if (currentTool === 'select') {
+                if (selectionStart && !isMovingSelection && isDragging) {
+                    selectionEnd = { x, y };
+                    render();
+                } else if (isMovingSelection) {
+                    // Just render to show ghost preview
+                    render();
+                }
+                return; // Don't process paint logic
+            }
+            
+            // Handle paint drag
+            if (isDragging && currentTool === 'paint') {
+                // Skip doors when dragging (only place on initial click)
+                if (selectedTile !== 'door' && !isInitialClick) {
+                    const oldTile = mapData.tiles[y][x];
+                    mapData.tiles[y][x] = selectedTile;
+                    
+                    // Handle door removal if painting over a door
+                    if (oldTile === 'door' && selectedTile !== 'door') {
+                        removeDoorAt(x, y);
+                    }
+                    
+                    render();
+                }
             }
         }
 
@@ -711,7 +759,8 @@
                         }
                     }
                     
-                    if (selectedTile === 'door' && isDragging) {
+                    // Don't allow door placement during drag (only on initial click)
+                    if (selectedTile === 'door' && !isInitialClick) {
                         return;
                     }
                     
@@ -721,54 +770,110 @@
                         removeDoorAt(x, y);
                     } else if (selectedTile === 'door' && oldTile !== 'door') {
                         ensureDoorConfig(x, y);
-                        if (!isDragging) {
+                        if (isInitialClick) {
                             openDoorConfig(x, y);
                         }
                     }
                     
                     render();
                     break;
-                    
-                case 'fill':
-                    floodFill(x, y, mapData.tiles[y][x], selectedTile);
-                    render();
-                    break;
-                    
-                case 'spawn':
-                    mapData.spawn_point = { x, y };
-                    render();
-                    break;
-                    
-                case 'object':
-                    // Check if clicking existing object
-                    const existingObjIndex = findObjectAt(x, y);
-                    if (existingObjIndex >= 0) {
-                        openObjectConfig(x, y, existingObjIndex);
-                    } else {
-                        // Create new object
-                        openObjectConfig(x, y, -1);
-                    }
-                    break;
-                    
-                case 'zone':
-                    if (!zoneStart) {
-                        zoneStart = { x, y };
-                    } else {
-                        const width = Math.abs(x - zoneStart.x) + 1;
-                        const height = Math.abs(y - zoneStart.y) + 1;
-                        const minX = Math.min(x, zoneStart.x);
-                        const minY = Math.min(y, zoneStart.y);
-                        
-                        document.getElementById('zone-x').value = minX;
-                        document.getElementById('zone-y').value = minY;
-                        document.getElementById('zone-width').value = width;
-                        document.getElementById('zone-height').value = height;
-                        
-                        showZonesModal();
-                        zoneStart = null;
-                    }
-                    break;
             }
+        }
+
+        function handleSelectionClick(x, y) {
+            if (isMovingSelection && selectedTiles) {
+                // Place the selection at the new location
+                placeSelection(x, y);
+                isMovingSelection = false;
+                selectedTiles = null;
+                selectionStart = null;
+                selectionEnd = null;
+                render();
+            } else if (selectionStart === null) {
+                // Start selection
+                selectionStart = { x, y };
+                selectionEnd = { x, y };
+            } else {
+                // Complete selection
+                selectionEnd = { x, y };
+                captureSelection();
+            }
+        }
+
+        function captureSelection() {
+            if (!selectionStart || !selectionEnd) return;
+            
+            const minX = Math.min(selectionStart.x, selectionEnd.x);
+            const maxX = Math.max(selectionStart.x, selectionEnd.x);
+            const minY = Math.min(selectionStart.y, selectionEnd.y);
+            const maxY = Math.max(selectionStart.y, selectionEnd.y);
+            
+            const width = maxX - minX + 1;
+            const height = maxY - minY + 1;
+            
+            // Capture the tiles
+            selectedTiles = {
+                tiles: [],
+                width: width,
+                height: height,
+                originX: minX,
+                originY: minY
+            };
+            
+            for (let y = minY; y <= maxY; y++) {
+                const row = [];
+                for (let x = minX; x <= maxX; x++) {
+                    row.push(mapData.tiles[y][x]);
+                }
+                selectedTiles.tiles.push(row);
+            }
+            
+            // Enter move mode
+            isMovingSelection = true;
+            console.log('Selection captured:', width, 'x', height, 'tiles');
+        }
+
+        function placeSelection(targetX, targetY) {
+            if (!selectedTiles) return;
+            
+            const width = selectedTiles.width;
+            const height = selectedTiles.height;
+            
+            // Check if placement is valid
+            if (targetX + width > mapData.width || targetY + height > mapData.height) {
+                alert('Selection would go out of bounds!');
+                return;
+            }
+            
+            // Clear original location (fill with floor)
+            for (let y = selectionStart.y; y <= selectionEnd.y; y++) {
+                for (let x = selectionStart.x; x <= selectionEnd.x; x++) {
+                    if (y >= 0 && y < mapData.height && x >= 0 && x < mapData.width) {
+                        mapData.tiles[y][x] = 'floor';
+                    }
+                }
+            }
+            
+            // Place tiles at new location
+            for (let dy = 0; dy < height; dy++) {
+                for (let dx = 0; dx < width; dx++) {
+                    const newY = targetY + dy;
+                    const newX = targetX + dx;
+                    if (newY >= 0 && newY < mapData.height && newX >= 0 && newX < mapData.width) {
+                        mapData.tiles[newY][newX] = selectedTiles.tiles[dy][dx];
+                    }
+                }
+            }
+            
+            console.log('Selection placed at', targetX, ',', targetY);
+        }
+
+        function cancelSelection() {
+            selectionStart = null;
+            selectionEnd = null;
+            selectedTiles = null;
+            isMovingSelection = false;
+            render();
         }
 
         function findObjectAt(x, y) {
@@ -969,6 +1074,18 @@
                         <textarea id="object-detail" placeholder="Looking closer, you notice a hidden compartment..."></textarea>
                     `;
                     break;
+                case 'cutscene':
+                    fieldsContainer.innerHTML += `
+                        <label>Cutscene ID:</label>
+                        <input type="text" id="object-cutscene-id" placeholder="intro_scene">
+                        
+                        <label>One-Time Only:</label>
+                        <select id="object-once">
+                            <option value="true">Yes - Play once then remove</option>
+                            <option value="false">No - Can trigger multiple times</option>
+                        </select>
+                    `;
+                    break;
             }
         }
 
@@ -976,6 +1093,12 @@
             document.getElementById('object-id').value = obj.id || '';
             
             switch(obj.type) {
+                case 'cutscene':
+                    if (document.getElementById('object-cutscene-id')) {
+                        document.getElementById('object-cutscene-id').value = obj.cutscene_id || '';
+                        document.getElementById('object-once').value = obj.once ? 'true' : 'false';
+                    }
+                    break;
                 case 'item':
                     if (document.getElementById('object-item-id')) {
                         document.getElementById('object-item-id').value = obj.item_id || '';
@@ -1069,6 +1192,10 @@
                 case 'examine':
                     obj.examine_text = document.getElementById('object-examine').value;
                     obj.detail_text = document.getElementById('object-detail').value;
+                    break;
+                case 'cutscene':
+                    obj.cutscene_id = document.getElementById('object-cutscene-id').value;
+                    obj.once = document.getElementById('object-once').value === 'true';
                     break;
             }
             
@@ -1259,6 +1386,76 @@
                     zone.rect.width * mapData.tile_size,
                     zone.rect.height * mapData.tile_size
                 );
+            }
+            
+            // DRAW SELECTION - This should be last to be on top
+            if (currentTool === 'select' && selectionStart) {
+                console.log('Drawing selection:', selectionStart, selectionEnd, isMovingSelection);
+                
+                if (isMovingSelection && selectedTiles) {
+                    // Show ghost of selection being moved (follows mouse)
+                    const rect = canvas.getBoundingClientRect();
+                    const mouseX = Math.floor((lastMouseX - rect.left) / mapData.tile_size);
+                    const mouseY = Math.floor((lastMouseY - rect.top) / mapData.tile_size);
+                    
+                    console.log('Drawing ghost at', mouseX, mouseY);
+                    
+                    // Draw the tiles themselves in ghost form
+                    for (let dy = 0; dy < selectedTiles.height; dy++) {
+                        for (let dx = 0; dx < selectedTiles.width; dx++) {
+                            const tileType = selectedTiles.tiles[dy][dx];
+                            const color = TILE_TYPES[tileType]?.color || '#FF00FF';
+                            
+                            ctx.fillStyle = color;
+                            ctx.globalAlpha = 0.5;
+                            ctx.fillRect(
+                                (mouseX + dx) * mapData.tile_size,
+                                (mouseY + dy) * mapData.tile_size,
+                                mapData.tile_size,
+                                mapData.tile_size
+                            );
+                            ctx.globalAlpha = 1.0;
+                        }
+                    }
+                    
+                    // Draw outline
+                    ctx.strokeStyle = '#64C8FF';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(
+                        mouseX * mapData.tile_size,
+                        mouseY * mapData.tile_size,
+                        selectedTiles.width * mapData.tile_size,
+                        selectedTiles.height * mapData.tile_size
+                    );
+                } else if (selectionEnd) {
+                    // Draw selection rectangle while selecting
+                    const minX = Math.min(selectionStart.x, selectionEnd.x);
+                    const maxX = Math.max(selectionStart.x, selectionEnd.x);
+                    const minY = Math.min(selectionStart.y, selectionEnd.y);
+                    const maxY = Math.max(selectionStart.y, selectionEnd.y);
+                    
+                    console.log('Drawing yellow selection:', minX, minY, 'to', maxX, maxY);
+                    
+                    // Fill with semi-transparent overlay
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+                    ctx.fillRect(
+                        minX * mapData.tile_size,
+                        minY * mapData.tile_size,
+                        (maxX - minX + 1) * mapData.tile_size,
+                        (maxY - minY + 1) * mapData.tile_size
+                    );
+                    
+                    // Draw border
+                    ctx.strokeStyle = '#FFFF00';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([]);
+                    ctx.strokeRect(
+                        minX * mapData.tile_size,
+                        minY * mapData.tile_size,
+                        (maxX - minX + 1) * mapData.tile_size,
+                        (maxY - minY + 1) * mapData.tile_size
+                    );
+                }
             }
         }
 

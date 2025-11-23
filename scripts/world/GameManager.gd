@@ -1,7 +1,7 @@
 extends Node
 
 var player_roster: Array = []
-var current_world_map: String = "facility_floor1"
+var current_world_map: String = "mansion_f1"
 var world_position: Vector2 = Vector2.ZERO
 var pending_battle_id: String = ""
 var return_to_world_after_battle: bool = false

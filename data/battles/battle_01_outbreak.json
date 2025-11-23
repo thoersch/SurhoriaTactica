@@ -3,7 +3,7 @@
   "name": "Outbreak Zone Alpha",
   "description": "First contact with the infected",
   "grid_width": 12,
-  "grid_height": 8,
+  "grid_height": 10,
   "tiles": [
 	[
 	  "wall",
@@ -101,6 +101,34 @@
 	  "floor",
 	  "floor",
 	  "floor",
+	  "wall"
+	],
+	[
+	  "wall",
+	  "wall",
+	  "floor",
+	  "floor",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "wall",
+	  "rubble",
+	  "floor",
+	  "wall",
+	  "wall"
+	],
+	[
+	  "wall",
+	  "rubble",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "floor",
+	  "rubble",
 	  "wall"
 	],
 	[

@@ -15,6 +15,8 @@ var inventory_ui: InventoryUI
 var container_ui: ContainerUI
 var document_ui: DocumentUI
 
+var current_cutscene: CutScene = null
+
 # Rendering
 var tile_colors = {
 	"wall": Color(0.2, 0.2, 0.2),
@@ -39,6 +41,7 @@ func _ready():
 	
 	# Initialize item database
 	ItemDatabase.load_items()
+	SkillDatabase.load_skills()
 	
 	# Initialize world state
 	if has_node("/root/GameManager"):
@@ -52,6 +55,7 @@ func _ready():
 	setup_inventory_ui()
 	setup_container_ui()
 	setup_document_ui()
+	setup_party_menu()
 	
 	# Check if we're returning from battle
 	var returning_from_battle = false
@@ -114,6 +118,35 @@ func _ready():
 		var pending = GameManager.get_pending_battle()
 		if pending != "":
 			TransitionManager.fade_from_black(1.0)
+			
+	print("DEBUG WorldScene: _ready() about to start cutscene test timer")
+	get_tree().create_timer(2.0).timeout.connect(_test_cutscene)
+
+func _test_cutscene():
+	print("DEBUG WorldScene: Timer finished, triggering cutscene")
+	play_cutscene("test_scene")
+
+func setup_party_menu():
+	var menu_layer = CanvasLayer.new()
+	menu_layer.name = "PartyMenuLayer"
+	menu_layer.layer = 150
+	add_child(menu_layer)
+	
+	# Party roster menu
+	var party_menu = preload("res://scripts/world/PartyMenuUI.gd").new()
+	party_menu.unit_selected.connect(_on_party_unit_selected)
+	party_menu.menu_closed.connect(_on_party_menu_closed)
+	menu_layer.add_child(party_menu)
+	
+	# Skill tree menu
+	var skill_tree = preload("res://scripts/skills/SkillTreeUI.gd").new()
+	skill_tree.skill_unlocked.connect(_on_skill_unlocked)
+	skill_tree.back_to_roster.connect(_on_skill_tree_back)
+	menu_layer.add_child(skill_tree)
+	
+	# Store references
+	set_meta("party_menu", party_menu)
+	set_meta("skill_tree", skill_tree)
 
 func setup_message_ui():
 	# Create a CanvasLayer so messages are always in screen space
@@ -170,6 +203,18 @@ func setup_document_ui():
 	document_layer.add_child(document_ui)
 
 func _input(event):
+	if event is InputEventKey and event.pressed and event.keycode == KEY_1:
+		print("Loading Mansion, Floor 1")
+		load_map("mansion_f1")
+		world_state.save_to_file()
+		get_tree().reload_current_scene()
+		
+	if event is InputEventKey and event.pressed and event.keycode == KEY_R and event.shift_pressed:
+		print("Resetting world state...")
+		world_state.reset()
+		world_state.save_to_file()
+		get_tree().reload_current_scene()
+	
 	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
 		_on_battle_triggered()
 		
@@ -182,6 +227,9 @@ func _input(event):
 		if inventory_ui:
 			inventory_ui.toggle_visibility()
 			get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and event.keycode == KEY_M:
+		open_party_menu()
+		get_viewport().set_input_as_handled()
 
 func _on_item_used(item: Item):
 	if item.item_type == Item.ItemType.CONSUMABLE:
@@ -200,6 +248,46 @@ func _on_item_used(item: Item):
 		# Save state
 		world_state.save_to_file()
 
+func open_party_menu():
+	"""Open the party roster menu"""
+	var party_menu = get_meta("party_menu") if has_meta("party_menu") else null
+	if party_menu:
+		# Load current roster from PlayerRoster
+		party_menu.show_party(PlayerRoster.player_units)
+
+func _on_party_unit_selected(unit_data: Dictionary):
+	"""When a unit is selected from the roster"""
+	var party_menu = get_meta("party_menu") if has_meta("party_menu") else null
+	var skill_tree = get_meta("skill_tree") if has_meta("skill_tree") else null
+	
+	if party_menu and skill_tree:
+		party_menu.visible = false
+		skill_tree.show_for_unit(unit_data)
+
+func _on_party_menu_closed():
+	"""When party menu is closed"""
+	print("Party menu closed")
+
+func _on_skill_tree_back():
+	"""When returning from skill tree to roster"""
+	var party_menu = get_meta("party_menu") if has_meta("party_menu") else null
+	var skill_tree = get_meta("skill_tree") if has_meta("skill_tree") else null
+	
+	if party_menu and skill_tree:
+		skill_tree.visible = false
+		party_menu.show_party(PlayerRoster.player_units)
+
+func _on_skill_unlocked(unit_data: Dictionary, skill_id: String):
+	"""When a skill is unlocked"""
+	print("Skill unlocked: ", skill_id)
+	
+	# Update the roster with new skill data
+	for i in range(PlayerRoster.player_units.size()):
+		if PlayerRoster.player_units[i].get("name") == unit_data.get("name"):
+			PlayerRoster.player_units[i] = unit_data
+			PlayerRoster.save_roster()
+			break
+			
 func show_message(text: String, duration: float = 3.0):
 	if not message_label:
 		return
@@ -550,6 +638,25 @@ func handle_object_interaction(obj: Dictionary):
 			handle_event_trigger(obj)
 		"examine":
 			handle_examine(obj)
+		"cutscene":  # NEW
+			handle_cutscene_trigger(obj)
+
+func handle_cutscene_trigger(obj: Dictionary):
+	"""Trigger a cutscene"""
+	var cutscene_id = obj.get("cutscene_id", "")
+	var once = obj.get("once", true)
+	
+	if cutscene_id == "":
+		show_message("Error: No cutscene ID specified!")
+		return
+	
+	# Mark as triggered if one-time
+	if once:
+		world_state.complete_event(obj.id)
+		world_state.save_to_file()
+	
+	# Play the cutscene
+	play_cutscene(cutscene_id)
 
 func handle_item_pickup(obj: Dictionary):
 	"""Handle picking up an item"""
@@ -718,6 +825,9 @@ func _on_document_closed():
 
 # Door functions
 func toggle_door(tile_pos: Vector2):
+	if world_state.is_door_open(tile_pos):
+		return
+		
 	var door_data = get_door_data(tile_pos)
 	var required_key = door_data.get("required_key", "")
 	
@@ -872,3 +982,39 @@ func transition_to_battle(battle_id: String):
 		get_node("/root/GameManager").start_battle(battle_id)
 	else:
 		get_tree().change_scene_to_file("res://scenes/BattleScene.tscn")
+
+func play_cutscene(cutscene_id: String):
+	"""Play a cutscene and return to world when done"""
+	print("DEBUG WorldScene: play_cutscene called with: ", cutscene_id)
+	
+	# Create cutscene instance
+	var cutscene_scene = preload("res://scenes/CutScene.tscn")
+	current_cutscene = cutscene_scene.instantiate()
+	current_cutscene.cutscene_finished.connect(_on_cutscene_finished)
+	
+	# Add as child (will be on top of world)
+	add_child(current_cutscene)
+	print("DEBUG WorldScene: Cutscene added to scene tree")
+	
+	# Disable player input
+	if player:
+		player.set_process(false)
+		player.set_physics_process(false)
+	
+	# Wait one frame for scene to be ready, then play
+	await get_tree().process_frame
+	print("DEBUG WorldScene: About to call play_cutscene")
+	current_cutscene.play_cutscene(cutscene_id)
+
+func _on_cutscene_finished():
+	"""Called when cutscene ends"""
+	if current_cutscene:
+		current_cutscene.queue_free()
+		current_cutscene = null
+	
+	# Re-enable player input
+	if player:
+		player.set_process(true)
+		player.set_physics_process(true)
+	
+	print("Cutscene finished, control returned to player")

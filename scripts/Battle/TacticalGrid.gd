@@ -13,6 +13,8 @@ var grid_width: int
 var grid_height: int
 var grid_size: int
 var terrain_data: Array = []
+var terrain_icons = {}
+var icons_loaded = false
 
 var selected_unit = null
 var move_range_cells = []
@@ -25,6 +27,7 @@ func _init(width: int, height: int, size: int):
 	grid_width = width
 	grid_height = height
 	grid_size = size
+	load_terrain_icons()
 
 func set_terrain_data(terrain: Array):
 	terrain_data = terrain
@@ -72,7 +75,12 @@ func draw_terrain():
 				elif tile_type == "door":
 					draw_rect(tile_rect, Color(0.4, 0.3, 0.2))
 				elif tile_type == "rubble":
-					draw_rect(tile_rect, Color(0.4, 0.4, 0.4, 0.5))
+					draw_rect(tile_rect, Color(0.6, 0.6, 0.6, 0.5))
+				else:
+					draw_rect(tile_rect, Color(0.6, 0.6, 0.6))
+				
+				if tile_type in ["crate", "sandbag", "rubble"]:
+					draw_terrain_icon(tile_type, x, y)
 
 func draw_grid_lines():
 	for y in range(grid_height + 1):
@@ -158,3 +166,85 @@ func set_aoe_preview(cells: Array):
 
 func set_min_range(cells: Array):
 	min_range_cells = cells
+	
+func load_terrain_icons():
+	"""Load terrain icon images"""
+	if icons_loaded:
+		return
+	
+	# Try to load icons
+	var icon_path = "res://assets/icons/terrain/"
+	
+	if FileAccess.file_exists(icon_path + "crate_icon.png"):
+		terrain_icons["crate"] = load(icon_path + "crate_icon.png")
+	
+	if FileAccess.file_exists(icon_path + "sandbag_icon.png"):
+		terrain_icons["sandbag"] = load(icon_path + "sandbag_icon.png")
+	
+	if FileAccess.file_exists(icon_path + "rubble_icon.png"):
+		terrain_icons["rubble"] = load(icon_path + "rubble_icon.png")
+	
+	icons_loaded = true
+	print("Loaded ", terrain_icons.size(), " terrain icons")
+
+func draw_terrain_icon(tile_type: String, x: int, y: int):
+	"""Draw icon overlay for terrain type"""
+	var icon = terrain_icons.get(tile_type)
+	if icon:
+		var pos = grid_to_world(Vector2(x, y))
+		var icon_size = grid_size * 0.6  # Icon takes up 60% of tile
+		
+		# Draw icon centered on tile
+		draw_texture_rect(
+			icon,
+			Rect2(
+				pos - Vector2(icon_size / 2, icon_size / 2),
+				Vector2(icon_size, icon_size)
+			),
+			false
+		)
+	else:
+		# Fallback: draw a simple symbol if no icon loaded
+		draw_terrain_fallback(tile_type, x, y)
+
+func draw_terrain_fallback(tile_type: String, x: int, y: int):
+	"""Draw simple shapes when icons aren't loaded"""
+	var pos = grid_to_world(Vector2(x, y))
+	var symbol_color = Color.WHITE
+	
+	match tile_type:
+		"crate":
+			# Draw a box
+			var box_size = grid_size * 0.4
+			draw_rect(
+				Rect2(pos - Vector2(box_size / 2, box_size / 2), Vector2(box_size, box_size)),
+				Color(0.8, 0.6, 0.3),
+				false,
+				2.0
+			)
+		"sandbag":
+			# Draw stacked lines
+			var width = grid_size * 0.5
+			var height = grid_size * 0.1
+			draw_line(
+				Vector2(pos.x - width / 2, pos.y),
+				Vector2(pos.x + width / 2, pos.y),
+				Color(0.7, 0.6, 0.4),
+				3.0
+			)
+			draw_line(
+				Vector2(pos.x - width / 2 + 5, pos.y - height),
+				Vector2(pos.x + width / 2 - 5, pos.y - height),
+				Color(0.7, 0.6, 0.4),
+				3.0
+			)
+		"rubble":
+			# Draw scattered dots
+			var positions = [
+				pos + Vector2(-8, -5),
+				pos + Vector2(5, -8),
+				pos + Vector2(-3, 7),
+				pos + Vector2(8, 4)
+			]
+			for p in positions:
+				draw_circle(p, 3, Color(0.5, 0.5, 0.5))

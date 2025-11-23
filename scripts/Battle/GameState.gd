@@ -26,6 +26,7 @@ var astar: AStar2D
 
 # Turn management
 var turn_manager: TurnManager
+var pending_level_up: bool = false
 
 enum ActionMode { NONE, MOVE, ATTACK }
 var current_action_mode: ActionMode = ActionMode.NONE
@@ -234,6 +235,21 @@ func setup_ui(parent: Node):
 	action_buttons.add_child(end_turn_button)
 	
 	setup_battle_item_ui(parent)
+	setup_level_up_ui(parent)
+
+func setup_level_up_ui(parent: Node):
+	# Create canvas layer for level up UI
+	var level_up_layer = CanvasLayer.new()
+	level_up_layer.name = "LevelUpLayer"
+	level_up_layer.layer = 150  # Above item UI
+	parent.add_child(level_up_layer)
+	
+	var level_up_ui = preload("res://scripts/Battle/LevelUpUI.gd").new()
+	level_up_ui.stat_chosen.connect(_on_level_up_stat_chosen)
+	level_up_layer.add_child(level_up_ui)
+	
+	# Store reference
+	game_root.set_meta("level_up_ui", level_up_ui)
 
 func show_phase_banner(is_player: bool, parent: Node):
 	var banner = parent.get_node_or_null("PhaseBanner")
@@ -330,10 +346,43 @@ func create_unit(parent: Node, grid_pos: Vector2, color: Color, data: Dictionary
 	
 	unit.unit_clicked.connect(_on_unit_clicked)
 	unit.action_complete.connect(_on_unit_action_complete)
+	unit.unit_leveled_up.connect(_on_unit_leveled_up)
 	
 	units.append(unit)
 	parent.add_child(unit)
 	return unit
+
+func _on_unit_leveled_up(unit: Unit):
+	"""Handle unit leveling up - show stat choice UI"""
+	print(unit.unit_name, " leveled up to level ", unit.level)
+	
+	pending_level_up = true
+	
+	# Get level up UI
+	var level_up_ui = game_root.get_meta("level_up_ui") if game_root.has_meta("level_up_ui") else null
+	
+	if level_up_ui:
+		level_up_ui.show_for_unit(unit)
+	else:
+		push_error("Level up UI not found!")
+
+func _on_level_up_stat_chosen(unit: Unit, stat_name: String):
+	"""Apply chosen stat increase"""
+	unit.apply_stat_increase(stat_name)
+	
+	# Update roster if player unit
+	if unit.is_player:
+		update_player_roster(unit)
+	
+	# Update UI
+	update_unit_info(unit)
+	refresh_display()
+	pending_level_up = false
+	
+	unit.check_for_additional_level_up()
+	
+	# Recheck battle end in case it was waiting
+	check_battle_end()
 
 func _on_move_button_pressed():
 	if not grid.selected_unit:
@@ -493,7 +542,6 @@ func attack_with_unit(attacker: Unit, target_pos: Vector2):
 	# If completely blocked, show message and don't attack
 	if los_result.blocked:
 		print("Attack blocked by cover!")
-		# Could show a message to player here
 		return
 	
 	# Get the primary target (if any)
@@ -543,11 +591,20 @@ func attack_with_unit(attacker: Unit, target_pos: Vector2):
 		if target != primary_target and targets.size() > 1:
 			damage = int(damage * 0.7)  # 70% damage to splash targets
 		
+		# Apply damage
 		target.take_damage(damage)
 		
 		# Show damage popup with coverage info
 		if target_los.coverage > 0:
 			show_coverage_damage_popup(target, damage, base_damage, target_los.coverage)
+		
+		# Award XP if target died from this attack
+		if target.is_dead and attacker.is_player:
+			var xp_reward = calculate_kill_xp(target)
+			print("DEBUG: ", attacker.unit_name, " killed ", target.unit_name, " - awarding ", xp_reward, " XP")
+			attacker.gain_experience(xp_reward)
+			show_xp_popup(attacker, xp_reward)
+			update_player_roster(attacker)
 		
 		# Remove enemy units when they die, but keep player units as corpses
 		if not target.is_alive() and not target.is_player:
@@ -571,6 +628,37 @@ func attack_with_unit(attacker: Unit, target_pos: Vector2):
 	update_unit_info(attacker)
 	refresh_display()
 	current_action_mode = ActionMode.NONE
+
+func calculate_kill_xp(enemy: Unit) -> int:
+	"""Calculate XP reward for killing an enemy"""
+	# Base XP scales with enemy level and stats
+	var base_xp = 50
+	var level_bonus = enemy.level * 10
+	var stat_bonus = (enemy.max_health / 10) + (enemy.attack * 2) + (enemy.defense * 2)
+	
+	return int(base_xp + level_bonus + stat_bonus)
+
+func calculate_heal_xp(amount_healed: int) -> int:
+	"""Calculate XP for healing (if you add healing abilities)"""
+	# Award XP based on amount healed
+	return max(5, amount_healed / 5)
+
+func show_xp_popup(unit: Unit, xp_amount: int):
+	"""Show XP gain popup over unit"""
+	var popup = Label.new()
+	popup.text = "+" + str(xp_amount) + " XP"
+	popup.add_theme_font_size_override("font_size", 16)
+	popup.add_theme_color_override("font_color", Color(0.3, 1.0, 1.0))
+	popup.add_theme_color_override("font_outline_color", Color.BLACK)
+	popup.add_theme_constant_override("outline_size", 2)
+	popup.position = unit.position + Vector2(-25, -50)
+	
+	game_root.add_child(popup)
+	
+	var tween = popup.create_tween()
+	tween.tween_property(popup, "position:y", popup.position.y - 30, 1.0)
+	tween.parallel().tween_property(popup, "modulate:a", 0.0, 1.0)
+	tween.tween_callback(popup.queue_free)
 
 func get_unit_at(grid_pos: Vector2) -> Unit:
 	for unit in units:
@@ -835,6 +923,10 @@ func check_battle_end():
 		if unit.is_alive():
 			alive_enemies += 1
 	
+	if pending_level_up:
+		print("Battle end waiting for level up choice...")
+		return
+		
 	if alive_players == 0:
 		battle_lost.emit()
 		print("Battle Lost!")
@@ -862,7 +954,12 @@ func update_unit_info(unit: Unit):
 	
 	if unit.is_player:
 		ui_label.text += "Level: " + str(unit.level) + "\n"
-		ui_label.text += "EXP: " + str(unit.experience) + "\n\n"
+		var current_level_total = unit.calculate_exp_for_level(unit.level)
+		var next_level_total = unit.calculate_exp_for_level(unit.level + 1)
+		var current_progress = unit.experience - current_level_total
+		var needed = next_level_total - current_level_total
+		ui_label.text += "EXP: " + str(current_progress) + "/" + str(needed) + "\n"
+		ui_label.text += "Total EXP: " + str(unit.experience) + "\n\n"
 	
 	ui_label.text += "Health: " + str(unit.health) + "/" + str(unit.max_health) + "\n"
 	ui_label.text += "Attack: " + str(unit.attack) + "\n"

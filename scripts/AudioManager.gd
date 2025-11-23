@@ -72,6 +72,7 @@ func play_ambient(ambient_name: String, fade_duration: float = 2.0):
 	
 	var stream = load(audio_path)
 	if stream:
+		stream.loop = true
 		ambient_player.stream = stream
 		ambient_player.volume_db = linear_to_db(0.0)
 		ambient_player.play()
@@ -113,6 +114,7 @@ func play_music(music_name: String, fade_duration: float = 1.5):
 	
 	var stream = load(audio_path)
 	if stream:
+		stream.loop = true
 		music_player.stream = stream
 		music_player.volume_db = linear_to_db(0.0)
 		music_player.play()

@@ -1,0 +1,20 @@
+{
+  "id": "test_scene",
+  "background": "res://icon.svg",
+  "frames": [
+	{
+	  "action": "dialogue",
+	  "character": "System",
+	  "text": "This is a test cutscene. Press SPACE or click to continue."
+	},
+	{
+	  "action": "dialogue",
+	  "character": "System",
+	  "text": "You can add character portraits, background images, and music!"
+	},
+	{
+	  "action": "fade_out",
+	  "duration": 1.0
+	}
+  ]
+}

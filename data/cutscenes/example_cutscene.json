@@ -1,0 +1,52 @@
+{
+  "id": "intro_scene",
+  "background": "res://assets/cutscenes/backgrounds/facility_interior.png",
+  "music": "res://assets/cutscenes/music/tense_theme.ogg",
+  "music_volume": -10,
+  "frames": [
+	{
+	  "action": "character_enter",
+	  "character": "rifleman",
+	  "side": "left",
+	  "portrait": "res://assets/cutscenes/portraits/rifleman_neutral.png",
+	  "position_index": 0
+	},
+	{
+	  "action": "dialogue",
+	  "character": "Rifleman",
+	  "text": "This is it. The facility where it all started.",
+	  "sound_effect": "res://assets/cutscenes/sfx/text_beep.ogg"
+	},
+	{
+	  "action": "character_enter",
+	  "character": "scout",
+	  "side": "right",
+	  "portrait": "res://assets/cutscenes/portraits/scout_neutral.png",
+	  "position_index": 0
+	},
+	{
+	  "action": "dialogue",
+	  "character": "Scout",
+	  "text": "Stay alert. We don't know what's waiting for us inside."
+	},
+	{
+	  "action": "dialogue",
+	  "character": "Rifleman",
+	  "text": "Got it. Let's move carefully."
+	},
+	{
+	  "action": "character_exit",
+	  "character": "rifleman",
+	  "side": "left"
+	},
+	{
+	  "action": "character_exit",
+	  "character": "scout",
+	  "side": "right"
+	},
+	{
+	  "action": "fade_out",
+	  "duration": 1.0
+	}
+  ]
+}
